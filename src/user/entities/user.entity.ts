@@ -1,16 +1,17 @@
 import { Field, ObjectType } from '@nestjs/graphql';
-import { Column, Entity, OneToOne } from 'typeorm';
+import { Column, Entity, ManyToOne, OneToOne } from 'typeorm';
 import { AuthProvider } from '../constants/auth-provider.enum';
 import { FamilyPosition } from '../constants/family-position.enum';
 import { UserStatus } from '../constants/user-status.enum';
 import { UserAuth } from './user-auth.entity';
 import { CoreEntity } from 'src/common/entites/core.entity';
+import { Family } from 'src/family/entities/family.entity';
 
 @Entity()
 @ObjectType()
 export class User extends CoreEntity {
   @Column({ unique: true })
-  @Field(() => String)
+  @Field()
   email: string;
 
   @Column({ type: 'enum', enum: AuthProvider })
@@ -18,9 +19,11 @@ export class User extends CoreEntity {
   provider: AuthProvider;
 
   @Column()
+  @Field()
   fcmToken: string;
 
   @Column()
+  @Field()
   userName: string;
 
   @Column({ type: 'enum', enum: FamilyPosition })
@@ -38,14 +41,22 @@ export class User extends CoreEntity {
   // profileImage: string;
 
   @Column({ default: UserStatus.ACTIVE })
+  @Field(() => UserStatus)
   status: UserStatus;
 
   @Column({ nullable: true })
+  @Field(() => Date)
   birthday: Date;
 
   @Column({ default: false })
+  @Field(() => Boolean)
   isBirthLunar: boolean;
 
   @Column()
+  @Field(() => Boolean)
   mktPushAgreed: boolean;
+
+  @ManyToOne(() => Family, (family) => family.users)
+  @Field(() => Family)
+  family: Family;
 }

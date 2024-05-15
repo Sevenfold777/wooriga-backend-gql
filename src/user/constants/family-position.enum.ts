@@ -9,4 +9,4 @@ export enum FamilyPosition {
   DAUGHTER = '딸',
 }
 
-registerEnumType(FamilyPosition, { name: 'position' });
+registerEnumType(FamilyPosition, { name: 'FamilyPosition' });

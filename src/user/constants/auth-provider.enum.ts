@@ -6,4 +6,4 @@ export enum AuthProvider {
   APPLE = 'apple',
 }
 
-registerEnumType(AuthProvider, { name: 'provider' });
+registerEnumType(AuthProvider, { name: 'AuthProvider' });

@@ -12,10 +12,10 @@ export class UserAuth extends CoreEntity {
   user: User;
 
   @Column()
-  @Field(() => String)
+  @Field()
   refreshToken: string;
 
   @Column({ nullable: true })
-  @Field(() => String)
+  @Field({ nullable: true })
   providerId?: string;
 }

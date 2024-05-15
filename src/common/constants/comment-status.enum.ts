@@ -1,9 +1,9 @@
 import { registerEnumType } from '@nestjs/graphql';
 
-export enum UserStatus {
+export enum CommentStatus {
   DELETED = 'deleted',
   HIDDEN = 'hidden',
   ACTIVE = 'active',
 }
 
-registerEnumType(UserStatus, { name: 'UserStatus' });
+registerEnumType(CommentStatus, { name: 'CommentStatus' });

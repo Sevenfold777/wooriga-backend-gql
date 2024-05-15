@@ -21,6 +21,15 @@ import { MessageModule } from './message/message.module';
 import { NotificationModule } from './notification/notification.module';
 import { PhotoModule } from './photo/photo.module';
 import { InquiryModule } from './inquiry/inquiry.module';
+import { Family } from './family/entities/family.entity';
+import { Notification } from './notification/entities/notification.entity';
+import { Message } from './message/entities/message.entity';
+import { MessageFamily } from './message/entities/message-family.entity';
+import { MessageKeep } from './message/entities/message-keep.entity';
+import { MessageComment } from './message/entities/message-comment.entity';
+import { Banner } from './banner/entities/banner.entity';
+import { BannerPayloadPlacement } from './banner/entities/banner-payload-placement.entity';
+import { DailyEmotion } from './emotion/entities/daily-emotion.entity';
 
 @Module({
   imports: [
@@ -31,7 +40,19 @@ import { InquiryModule } from './inquiry/inquiry.module';
       username: process.env.DB_USERNAME,
       password: process.env.DB_PASSWORD,
       database: process.env.DB_NAME,
-      entities: [User, UserAuth],
+      entities: [
+        User,
+        UserAuth,
+        Family,
+        Notification,
+        Message,
+        MessageFamily,
+        MessageKeep,
+        MessageComment,
+        DailyEmotion,
+        Banner,
+        BannerPayloadPlacement,
+      ],
       synchronize: false,
       logging: true,
       timezone: '+09:00',
