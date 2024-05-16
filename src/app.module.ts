@@ -13,7 +13,6 @@ import { UserAuth } from './user/entities/user-auth.entity';
 import { UploadModule } from './upload/upload.module';
 import { AdminModule } from './admin/admin.module';
 import { BannerModule } from './banner/banner.module';
-import { EmotionModule } from './emotion/emotion.module';
 import { FamilyModule } from './family/family.module';
 import { FamilyPediaModule } from './family-pedia/family-pedia.module';
 import { LetterModule } from './letter/letter.module';
@@ -29,7 +28,7 @@ import { MessageKeep } from './message/entities/message-keep.entity';
 import { MessageComment } from './message/entities/message-comment.entity';
 import { Banner } from './banner/entities/banner.entity';
 import { BannerPayloadPlacement } from './banner/entities/banner-payload-placement.entity';
-import { DailyEmotion } from './emotion/entities/daily-emotion.entity';
+import { DailyEmotion } from './daily-emotion/entities/daily-emotion.entity';
 import { Inquiry } from './inquiry/entities/inquiry.entity';
 import { Photo } from './photo/entities/photo.entity';
 import { PhotoFile } from './photo/entities/photo-file.entity';
@@ -40,6 +39,7 @@ import { LetterKeep } from './letter/entities/letter-keep.entity';
 import { LetterGuide } from './letter/entities/letter-guide.entity';
 import { FamilyPedia } from './family-pedia/entities/family-pedia.entity';
 import { FamilyPediaQuestion } from './family-pedia/entities/family-pedia-question';
+import { DailyEmotionModule } from './daily-emotion/daily-emotion.module';
 
 @Module({
   imports: [
@@ -90,7 +90,6 @@ import { FamilyPediaQuestion } from './family-pedia/entities/family-pedia-questi
     UploadModule,
     AdminModule,
     BannerModule,
-    EmotionModule,
     FamilyModule,
     FamilyPediaModule,
     LetterModule,
@@ -98,6 +97,7 @@ import { FamilyPediaQuestion } from './family-pedia/entities/family-pedia-questi
     NotificationModule,
     PhotoModule,
     InquiryModule,
+    DailyEmotionModule,
   ],
   controllers: [AppController],
 })

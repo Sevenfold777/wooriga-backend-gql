@@ -1,15 +1,15 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { EmotionService } from '../emotion.service';
+import { DailyEmotionService } from '../daily-emotion.service';
 
-describe('EmotionService', () => {
-  let service: EmotionService;
+describe('DailyEmotionService', () => {
+  let service: DailyEmotionService;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [EmotionService],
+      providers: [DailyEmotionService],
     }).compile();
 
-    service = module.get<EmotionService>(EmotionService);
+    service = module.get<DailyEmotionService>(DailyEmotionService);
   });
 
   it('should be defined', () => {
