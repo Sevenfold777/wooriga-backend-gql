@@ -30,6 +30,16 @@ import { MessageComment } from './message/entities/message-comment.entity';
 import { Banner } from './banner/entities/banner.entity';
 import { BannerPayloadPlacement } from './banner/entities/banner-payload-placement.entity';
 import { DailyEmotion } from './emotion/entities/daily-emotion.entity';
+import { Inquiry } from './inquiry/entities/inquiry.entity';
+import { Photo } from './photo/entities/photo.entity';
+import { PhotoFile } from './photo/entities/photo-file.entity';
+import { PhotoComment } from './photo/entities/photo-comment.entity';
+import { PhotoLike } from './photo/entities/photo-like.entity';
+import { Letter } from './letter/entities/letter.entity';
+import { LetterKeep } from './letter/entities/letter-keep.entity';
+import { LetterGuide } from './letter/entities/letter-guide.entity';
+import { FamilyPedia } from './family-pedia/entities/family-pedia.entity';
+import { FamilyPediaQuestion } from './family-pedia/entities/family-pedia-question';
 
 @Module({
   imports: [
@@ -52,6 +62,16 @@ import { DailyEmotion } from './emotion/entities/daily-emotion.entity';
         DailyEmotion,
         Banner,
         BannerPayloadPlacement,
+        Inquiry,
+        Photo,
+        PhotoFile,
+        PhotoComment,
+        PhotoLike,
+        Letter,
+        LetterKeep,
+        LetterGuide,
+        FamilyPedia,
+        FamilyPediaQuestion,
       ],
       synchronize: false,
       logging: true,

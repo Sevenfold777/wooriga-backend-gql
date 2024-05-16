@@ -8,6 +8,12 @@ import { Field, ObjectType } from '@nestjs/graphql';
 @Entity()
 @ObjectType()
 export class MessageFamily extends CoreEntity {
+  /**
+   * 하나의 Message 당 여러 MessageFamily를 가질 수 있도록 서비스 확장 가능
+   * e.g. 1년 단위 메세지 반복
+   * 따라서 composite key 고려하지 않음
+   */
+
   @Column()
   @Field(() => Date)
   receiveDate: Date;
