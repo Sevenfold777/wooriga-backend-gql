@@ -1,7 +1,103 @@
-import { Resolver } from '@nestjs/graphql';
+import { Args, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { PhotoService } from './photo.service';
+import { AuthUser } from 'src/auth/decorators/auth-user.decorator';
+import { AuthUserId } from 'src/auth/constants/auth-user-id.type';
+import { BaseResponseDTO } from 'src/common/dto/base-res.dto';
+import { PhotoComment } from './entities/photo-comment.entity';
+import { PhotoCommentReqDTO } from './dto/photo-comment-req.dto';
+import { EditPhotoReqDTO } from './dto/edit-photo-req.dto';
+import { Photo } from './entities/photo.entity';
 
 @Resolver()
 export class PhotoResolver {
   constructor(private readonly photoService: PhotoService) {}
+
+  /**
+   * TODO
+   * 1. create Photo 구현
+   * 2. v1의 PhotoOutput, PhotoMeta DTO 어떻게 처리할지 (현재는 그냥 Photo 사용)
+   */
+
+  /**
+   * createPhoto
+   * => upload module에서 연계 구현
+   * (service는 photo module 것 사용)
+   * (REST API mutipart/form-data)
+   */
+
+  @Mutation(() => BaseResponseDTO)
+  deletePhoto(
+    @AuthUser() user: AuthUserId,
+    @Args('id', { type: () => Int }) id: number,
+  ): Promise<BaseResponseDTO> {
+    return null;
+  }
+
+  /**
+   * 운영정책 상 photo file은 수정(추가/삭제) 불가
+   * 해당 기능이 필요하다면, 사용자는 게시글 삭제하고 사진 다시 선택해서 올려야
+   */
+  @Mutation(() => BaseResponseDTO)
+  editPhoto(
+    @AuthUser() user: AuthUserId,
+    @Args('reqDTO') editPhotoReqDTO: EditPhotoReqDTO,
+  ): Promise<BaseResponseDTO> {
+    return null;
+  }
+
+  @Query(() => [Photo])
+  findPhotos(
+    @AuthUser() user: AuthUserId,
+    @Args('prev', { type: () => Int }) prev: number,
+  ): Promise<Photo[]> {
+    return null;
+  }
+
+  @Query(() => Photo)
+  findPhoto(
+    @AuthUser() user: AuthUserId,
+    @Args('id', { type: () => Int }) id: number,
+  ): Promise<Photo> {
+    return null;
+  }
+
+  @Mutation(() => BaseResponseDTO)
+  likePhoto(
+    @AuthUser() user: AuthUserId,
+    @Args('id', { type: () => Int }) id: number,
+  ): Promise<BaseResponseDTO> {
+    return null;
+  }
+
+  @Mutation(() => BaseResponseDTO)
+  unlikePhoto(
+    @AuthUser() user: AuthUserId,
+    @Args('id', { type: () => Int }) id: number,
+  ): Promise<BaseResponseDTO> {
+    return null;
+  }
+
+  @Mutation(() => BaseResponseDTO)
+  commentPhoto(
+    @AuthUser() user: AuthUserId,
+    @Args('reqDTO') photoCommentReqDTO: PhotoCommentReqDTO,
+  ): Promise<BaseResponseDTO> {
+    return null;
+  }
+
+  @Mutation(() => BaseResponseDTO)
+  deleteComment(
+    @AuthUser() user: AuthUserId,
+    @Args('id', { type: () => Int }) id: number,
+  ): Promise<BaseResponseDTO> {
+    return null;
+  }
+
+  @Query(() => [PhotoComment])
+  findPhotoComments(
+    @AuthUser() user: AuthUserId,
+    @Args('reqDTO') photoCommentReqDTO: PhotoCommentReqDTO,
+  ): Promise<PhotoComment[]> {
+    return null;
+  }
 }

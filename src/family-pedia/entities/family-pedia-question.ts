@@ -2,6 +2,7 @@ import { CoreEntity } from 'src/common/entites/core.entity';
 import { Entity, ManyToOne, Column } from 'typeorm';
 import { FamilyPedia } from './family-pedia.entity';
 import { Field, ObjectType } from '@nestjs/graphql';
+import { User } from 'src/user/entities/user.entity';
 
 @Entity({ name: 'family_pedia_row' })
 @ObjectType()
@@ -19,6 +20,10 @@ export class FamilyPediaQuestion extends CoreEntity {
   @Column({ name: 'payload' })
   @Field()
   answer: string;
+
+  @ManyToOne(() => User)
+  @Field(() => User, { description: '질문 작성자' })
+  questioner: User;
 }
 
 /**
