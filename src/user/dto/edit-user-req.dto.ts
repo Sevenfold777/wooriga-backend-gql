@@ -1,11 +1,24 @@
-import { Field, InputType, PartialType } from '@nestjs/graphql';
-import { SignUpReqDTO } from './sign-up-req.dto';
-import { IsBoolean, IsOptional } from 'class-validator';
+import { Field, InputType } from '@nestjs/graphql';
+import { IsBoolean, IsEnum, IsNotEmpty, IsString } from 'class-validator';
+import { FamilyPosition } from '../constants/family-position.enum';
 
 @InputType()
-export class EditUserReqDTO extends PartialType(SignUpReqDTO) {
-  @Field(() => Boolean, { nullable: true })
-  @IsOptional()
+export class EditUserReqDTO {
+  @Field()
+  @IsString()
+  @IsNotEmpty()
+  userName: string;
+
+  @Field()
+  @IsString()
+  @IsNotEmpty()
+  birthday: string;
+
+  @Field(() => Boolean)
   @IsBoolean()
-  isActive?: boolean;
+  isBirthLunar: boolean;
+
+  @Field(() => FamilyPosition)
+  @IsEnum(FamilyPosition)
+  position: FamilyPosition;
 }

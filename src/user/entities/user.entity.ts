@@ -1,5 +1,5 @@
 import { Field, ObjectType } from '@nestjs/graphql';
-import { Column, Entity, ManyToOne, OneToOne } from 'typeorm';
+import { Column, Entity, JoinColumn, ManyToOne, OneToOne } from 'typeorm';
 import { AuthProvider } from '../constants/auth-provider.enum';
 import { FamilyPosition } from '../constants/family-position.enum';
 import { UserStatus } from '../constants/user-status.enum';
@@ -56,7 +56,12 @@ export class User extends CoreEntity {
   @Field(() => Boolean)
   mktPushAgreed: boolean;
 
+  @Column({ name: 'family_id' })
+  //   @Field(() => Int)
+  familyId: number;
+
   @ManyToOne(() => Family, (family) => family.users)
+  @JoinColumn({ name: 'family_id', referencedColumnName: 'id' })
   @Field(() => Family)
   family: Family;
 }

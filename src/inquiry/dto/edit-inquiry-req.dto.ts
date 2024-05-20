@@ -1,8 +1,13 @@
-import { Field, InputType, Int, PartialType } from '@nestjs/graphql';
+import { Field, InputType, Int } from '@nestjs/graphql';
 import { CreateInquiryReqDTO } from './create-inquiry-req.dto';
 
+/**
+ * Partial type 아님
+ * title, payload 항상 입력해줘야
+ * REST API의 PUT 개녑
+ */
 @InputType()
-export class EditInquiryReqDTO extends PartialType(CreateInquiryReqDTO) {
+export class EditInquiryReqDTO extends CreateInquiryReqDTO {
   @Field(() => Int)
   id: number;
 }

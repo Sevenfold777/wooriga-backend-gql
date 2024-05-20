@@ -21,18 +21,18 @@ export class SignUpReqDTO {
   provider: AuthProvider;
 
   @Field()
-  @IsString()
   @IsNotEmpty()
+  @IsString()
   userName: string;
 
   @Field()
+  @IsNotEmpty()
   @IsString()
   birthday: string;
 
   @Field(() => Boolean)
-  @IsOptional()
   @IsBoolean()
-  isBirthLunar?: boolean;
+  isBirthLunar: boolean;
 
   @Field(() => FamilyPosition)
   @IsEnum(FamilyPosition)
@@ -56,9 +56,4 @@ export class SignUpReqDTO {
   @IsOptional()
   @IsString()
   nonce?: string;
-
-  @Field({ nullable: true })
-  @IsOptional()
-  @IsString()
-  fcmToken?: string;
 }

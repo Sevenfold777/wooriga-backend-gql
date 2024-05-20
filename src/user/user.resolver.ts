@@ -8,25 +8,26 @@ import { RefreshTokenReqDTO } from './dto/refresh-token-req.dto';
 import { SignInReqDTO } from './dto/sign-in-req.dto';
 import { BaseResponseDTO } from 'src/common/dto/base-res.dto';
 import { Public } from 'src/auth/decorators/public.decorator';
-import { SignUpResDTO } from './dto/sign-up-res.dto';
 import { SignUpReqDTO } from './dto/sign-up-req.dto';
 import { EditUserReqDTO } from './dto/edit-user-req.dto';
+import { UserResDTO } from './dto/user-res.dto';
+import { CreateResDTO } from 'src/common/dto/create-res.dto';
 
 @Resolver(() => User)
 export class UserResolver {
   constructor(private readonly userService: UserService) {}
 
-  @Query(() => User)
-  findMyProfile(@AuthUser() user: AuthUserId): Promise<User> {
+  @Query(() => UserResDTO)
+  findMyProfile(@AuthUser() user: AuthUserId): Promise<UserResDTO> {
     return this.userService.myProfile(user);
   }
 
   @Public()
-  @Mutation(() => SignUpResDTO)
+  @Mutation(() => CreateResDTO)
   signUp(
     @Args('reqDTO', { type: () => SignUpReqDTO }) signUpReqDTO: SignUpReqDTO,
-  ): Promise<SignUpResDTO> {
-    return null;
+  ): Promise<CreateResDTO> {
+    return this.userService.signUp(signUpReqDTO);
   }
 
   @Mutation(() => BaseResponseDTO)
@@ -35,7 +36,7 @@ export class UserResolver {
     @Args('reqDTO', { type: () => EditUserReqDTO })
     editUserReqDTO: EditUserReqDTO,
   ): Promise<BaseResponseDTO> {
-    return null;
+    return this.userService.editUser(user, editUserReqDTO);
   }
 
   @Public()
@@ -43,7 +44,7 @@ export class UserResolver {
   signIn(
     @Args('reqDTO', { type: () => SignInReqDTO }) signInReqDTO: SignInReqDTO,
   ): Promise<SignInResDTO> {
-    return null;
+    return this.userService.signIn(signInReqDTO);
   }
 
   @Public()
@@ -52,11 +53,11 @@ export class UserResolver {
     @Args('reqDTO', { type: () => RefreshTokenReqDTO })
     refreshTokenReqDTO: RefreshTokenReqDTO,
   ): Promise<SignInResDTO> {
-    return null;
+    return this.userService.refreshToken(refreshTokenReqDTO);
   }
 
   @Mutation(() => BaseResponseDTO)
   withdraw(@AuthUser() user: AuthUserId): Promise<BaseResponseDTO> {
-    return null;
+    return this.userService.withdraw(user);
   }
 }

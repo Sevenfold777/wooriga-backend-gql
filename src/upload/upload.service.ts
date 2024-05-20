@@ -7,7 +7,7 @@ import { BaseResponseDTO } from 'src/common/dto/base-res.dto';
 export class UploadService {
   constructor(private readonly authService: AuthService) {}
 
-  async uploadPhotos(
+  async uploadFiles(
     userId: number,
     dir: string,
     @UploadedFiles() files: Express.Multer.File[],
@@ -52,7 +52,7 @@ export class UploadService {
   }
 
   // delete files from S3
-  async deletePhotos(urls: string[]): Promise<BaseResponseDTO> {
+  async deleteFiles(urls: string[]): Promise<BaseResponseDTO> {
     if (urls.length === 0) {
       return { result: true };
     }

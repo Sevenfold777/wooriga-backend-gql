@@ -22,6 +22,6 @@ export class UploadController {
     dir: string,
     @UploadedFiles() files: Express.Multer.File[],
   ): Promise<string[]> {
-    return this.uploadService.uploadPhotos(user.userId, dir, files);
+    return this.uploadService.uploadFiles(user.userId, dir, files);
   }
 }

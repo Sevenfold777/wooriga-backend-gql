@@ -14,7 +14,7 @@ export class BannerPayloadPlacement extends CoreEntity {
   @Field() // 왜 string?
   order: string;
 
-  @ManyToOne(() => Banner, (banner) => banner.placement, {
+  @ManyToOne(() => Banner, (banner) => banner.placements, {
     onDelete: 'CASCADE',
   })
   @Field(() => Banner)

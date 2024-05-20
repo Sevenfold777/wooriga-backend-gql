@@ -1,5 +1,5 @@
 import { Field, InputType } from '@nestjs/graphql';
-import { IsEnum, IsNotEmpty, IsString } from 'class-validator';
+import { IsEnum, IsOptional, IsString } from 'class-validator';
 import { BannerType } from '../constants/banner-type.enum';
 
 @InputType()
@@ -8,8 +8,8 @@ export class BannerReqDTO {
   @IsEnum(BannerType)
   type: BannerType;
 
-  @Field()
-  @IsNotEmpty()
+  @Field({ nullable: true })
+  @IsOptional()
   @IsString()
-  screenName: string;
+  screenName?: string;
 }

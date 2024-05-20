@@ -25,10 +25,12 @@ export class Banner extends CoreEntity {
   payloadType: BannerPayloadType;
 
   @Column()
-  @Field()
+  @Field({
+    description: '클릭시 이동 화면 - Webview url | RN screen name(to navigate)',
+  })
   payloadPath: string;
 
   @OneToMany(() => BannerPayloadPlacement, (place) => place.banner)
-  @Field(() => BannerPayloadPlacement)
-  placement: BannerPayloadPlacement;
+  @Field(() => [BannerPayloadPlacement])
+  placements: BannerPayloadPlacement[];
 }
