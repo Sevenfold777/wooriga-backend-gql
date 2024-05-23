@@ -1,12 +1,12 @@
-import { Field, InputType } from '@nestjs/graphql';
+import { ArgsType, Field } from '@nestjs/graphql';
 import { IsNotEmpty, IsString } from 'class-validator';
 
-@InputType()
+@ArgsType()
 export class CreatePhotoReqDTO {
   @Field()
   @IsNotEmpty()
   @IsString()
-  theme: string;
+  title: string;
 
   @Field()
   @IsNotEmpty()

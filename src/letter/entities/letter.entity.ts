@@ -43,4 +43,8 @@ export class Letter extends CoreEntity {
   @Column({ nullable: true })
   @Field(() => Date)
   receiveDate: Date; // timeCapsule 아니면 createdAt과 같음
+
+  @Column({ default: false })
+  @Field(() => Boolean)
+  kept: boolean;
 }

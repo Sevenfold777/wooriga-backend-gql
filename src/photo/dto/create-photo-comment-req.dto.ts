@@ -1,7 +1,7 @@
-import { Field, InputType, Int } from '@nestjs/graphql';
+import { ArgsType, Field, Int } from '@nestjs/graphql';
 import { IsNotEmpty, IsNumber, IsString } from 'class-validator';
 
-@InputType()
+@ArgsType()
 export class CreatePhotoCommentReqDTO {
   @Field(() => Int)
   @IsNumber()

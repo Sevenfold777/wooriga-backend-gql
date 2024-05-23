@@ -8,9 +8,7 @@ export class BannerResolver {
   constructor(private readonly bannerService: BannerService) {}
 
   @Query(() => BannersResDTO)
-  findBanners(
-    @Args('reqDTO') bannerReqDTO: BannerReqDTO,
-  ): Promise<BannersResDTO> {
+  findBanners(@Args() bannerReqDTO: BannerReqDTO): Promise<BannersResDTO> {
     return this.bannerService.findBanners(bannerReqDTO);
   }
 }

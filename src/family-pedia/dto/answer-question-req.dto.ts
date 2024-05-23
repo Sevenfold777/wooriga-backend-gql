@@ -1,11 +1,15 @@
-import { Field, InputType, Int } from '@nestjs/graphql';
+import { ArgsType, Field, Int } from '@nestjs/graphql';
 import { IsNumber, IsString } from 'class-validator';
 
-@InputType()
+@ArgsType()
 export class AnswerQuestionReqDTO {
   @Field(() => Int)
   @IsNumber()
   id: number;
+
+  @Field()
+  @IsNumber()
+  pediaId: number;
 
   @Field()
   //   @IsNotEmpty() // 빈칸으로 바꾸기 가능하도록 구현

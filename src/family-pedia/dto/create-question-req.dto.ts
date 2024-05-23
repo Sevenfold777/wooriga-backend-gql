@@ -1,8 +1,12 @@
-import { Field, InputType } from '@nestjs/graphql';
-import { IsNotEmpty, IsString } from 'class-validator';
+import { ArgsType, Field } from '@nestjs/graphql';
+import { IsNotEmpty, IsNumber, IsString } from 'class-validator';
 
-@InputType()
+@ArgsType()
 export class CreateQuestionReqDTO {
+  @Field()
+  @IsNumber()
+  pediaId: number;
+
   @Field()
   @IsNotEmpty()
   @IsString()

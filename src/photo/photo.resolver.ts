@@ -3,10 +3,13 @@ import { PhotoService } from './photo.service';
 import { AuthUser } from 'src/auth/decorators/auth-user.decorator';
 import { AuthUserId } from 'src/auth/constants/auth-user-id.type';
 import { BaseResponseDTO } from 'src/common/dto/base-res.dto';
-import { PhotoComment } from './entities/photo-comment.entity';
 import { PhotoCommentReqDTO } from './dto/photo-comment-req.dto';
 import { EditPhotoReqDTO } from './dto/edit-photo-req.dto';
-import { Photo } from './entities/photo.entity';
+import { PhotosResDTO } from './dto/photos-res.dto';
+import { PhotoResDTO } from './dto/photo-res.dto';
+import { PhotoCommentsResDTO } from './dto/photo-comments-res.dto';
+import { PaginationReqDTO } from 'src/common/dto/pagination-req.dto';
+import { CreatePhotoCommentReqDTO } from './dto/create-photo-comment-req.dto';
 
 @Resolver()
 export class PhotoResolver {
@@ -30,7 +33,7 @@ export class PhotoResolver {
     @AuthUser() user: AuthUserId,
     @Args('id', { type: () => Int }) id: number,
   ): Promise<BaseResponseDTO> {
-    return null;
+    return this.photoService.deletePhoto(user, id);
   }
 
   /**
@@ -40,49 +43,49 @@ export class PhotoResolver {
   @Mutation(() => BaseResponseDTO)
   editPhoto(
     @AuthUser() user: AuthUserId,
-    @Args('reqDTO') editPhotoReqDTO: EditPhotoReqDTO,
+    @Args() editPhotoReqDTO: EditPhotoReqDTO,
   ): Promise<BaseResponseDTO> {
-    return null;
+    return this.photoService.editPhoto(user, editPhotoReqDTO);
   }
 
-  @Query(() => [Photo])
+  @Query(() => PhotosResDTO)
   findPhotos(
     @AuthUser() user: AuthUserId,
-    @Args('prev', { type: () => Int }) prev: number,
-  ): Promise<Photo[]> {
-    return null;
+    @Args() paginationReqDTO: PaginationReqDTO,
+  ): Promise<PhotosResDTO> {
+    return this.photoService.findPhotos(user, paginationReqDTO);
   }
 
-  @Query(() => Photo)
+  @Query(() => PhotoResDTO)
   findPhoto(
     @AuthUser() user: AuthUserId,
     @Args('id', { type: () => Int }) id: number,
-  ): Promise<Photo> {
-    return null;
+  ): Promise<PhotoResDTO> {
+    return this.photoService.findPhoto(user, id);
   }
 
   @Mutation(() => BaseResponseDTO)
   likePhoto(
     @AuthUser() user: AuthUserId,
-    @Args('id', { type: () => Int }) id: number,
+    @Args('photoId', { type: () => Int }) photoId: number,
   ): Promise<BaseResponseDTO> {
-    return null;
+    return this.photoService.likePhoto(user, photoId);
   }
 
   @Mutation(() => BaseResponseDTO)
   unlikePhoto(
     @AuthUser() user: AuthUserId,
-    @Args('id', { type: () => Int }) id: number,
+    @Args('photoId', { type: () => Int }) photoId: number,
   ): Promise<BaseResponseDTO> {
-    return null;
+    return this.photoService.unlikePhoto(user, photoId);
   }
 
   @Mutation(() => BaseResponseDTO)
   commentPhoto(
     @AuthUser() user: AuthUserId,
-    @Args('reqDTO') photoCommentReqDTO: PhotoCommentReqDTO,
+    @Args() createCommentReqDTO: CreatePhotoCommentReqDTO,
   ): Promise<BaseResponseDTO> {
-    return null;
+    return this.photoService.commentPhoto(user, createCommentReqDTO);
   }
 
   @Mutation(() => BaseResponseDTO)
@@ -90,14 +93,14 @@ export class PhotoResolver {
     @AuthUser() user: AuthUserId,
     @Args('id', { type: () => Int }) id: number,
   ): Promise<BaseResponseDTO> {
-    return null;
+    return this.photoService.deleteComment(user, id);
   }
 
-  @Query(() => [PhotoComment])
+  @Query(() => PhotoCommentsResDTO)
   findPhotoComments(
     @AuthUser() user: AuthUserId,
-    @Args('reqDTO') photoCommentReqDTO: PhotoCommentReqDTO,
-  ): Promise<PhotoComment[]> {
-    return null;
+    @Args() photoCommentReqDTO: PhotoCommentReqDTO,
+  ): Promise<PhotoCommentsResDTO> {
+    return this.photoService.findPhotoComments(user, photoCommentReqDTO);
   }
 }

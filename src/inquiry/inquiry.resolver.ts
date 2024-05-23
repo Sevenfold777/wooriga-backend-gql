@@ -17,7 +17,7 @@ export class InquiryResolver {
   @Query(() => InquiriesResDTO)
   findInquiries(
     @AuthUser() user: AuthUserId,
-    @Args('reqDTO', { nullable: true }) paginationReqDTO: PaginationReqDTO,
+    @Args() paginationReqDTO: PaginationReqDTO,
   ): Promise<InquiriesResDTO> {
     return this.inquiryService.findInquiries(user, paginationReqDTO);
   }
@@ -33,7 +33,7 @@ export class InquiryResolver {
   @Mutation(() => CreateResDTO)
   createInquiry(
     @AuthUser() user: AuthUserId,
-    @Args('reqDTO') createInquiryReqDTO: CreateInquiryReqDTO,
+    @Args() createInquiryReqDTO: CreateInquiryReqDTO,
   ): Promise<CreateResDTO> {
     return this.inquiryService.createInquiry(user, createInquiryReqDTO);
   }
@@ -41,7 +41,7 @@ export class InquiryResolver {
   @Mutation(() => BaseResponseDTO)
   editInquiry(
     @AuthUser() user: AuthUserId,
-    @Args('reqDTO') editInquiryReqDTO: EditInquiryReqDTO,
+    @Args() editInquiryReqDTO: EditInquiryReqDTO,
   ): Promise<BaseResponseDTO> {
     return this.inquiryService.editInquiry(user, editInquiryReqDTO);
   }

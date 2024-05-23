@@ -1,8 +1,8 @@
 import { IsEnum, IsString, IsOptional, IsBoolean } from 'class-validator';
 import { AuthProvider } from '../constants/auth-provider.enum';
-import { Field, InputType } from '@nestjs/graphql';
+import { ArgsType, Field } from '@nestjs/graphql';
 
-@InputType()
+@ArgsType()
 export class SignInReqDTO {
   @Field(() => AuthProvider)
   @IsEnum(AuthProvider)

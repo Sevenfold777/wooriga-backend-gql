@@ -19,7 +19,9 @@ export class MessageKeep extends CoreEntity {
   @Field(() => User)
   user: User;
 
-  @ManyToOne(() => MessageFamily, { onDelete: 'CASCADE' })
+  @ManyToOne(() => MessageFamily, (msgFam) => msgFam.keeps, {
+    onDelete: 'CASCADE',
+  })
   @Field(() => MessageFamily)
   message: MessageFamily;
 }

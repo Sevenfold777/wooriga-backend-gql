@@ -6,9 +6,11 @@ import { MsgResDTO } from './dto/message-res.dto';
 import { AuthUser } from 'src/auth/decorators/auth-user.decorator';
 import { AuthUserId } from 'src/auth/constants/auth-user-id.type';
 import { BaseResponseDTO } from 'src/common/dto/base-res.dto';
-import { MessageComment } from './entities/message-comment.entity';
 import { MsgCommentReqDTO } from './dto/message-comment-req.dto';
 import { CreateMsgCommentReqDTO } from './dto/create-message-comment-req.dto';
+import { PaginationReqDTO } from 'src/common/dto/pagination-req.dto';
+import { MsgCommentsResDTO } from './dto/message-comments-res.dto';
+import { MsgsResDTO } from './dto/messages-res.dto';
 
 @Resolver(() => Message)
 export class MessageResolver {
@@ -21,33 +23,33 @@ export class MessageResolver {
 
   @Query(() => MsgResDTO)
   findMsgLatest(@AuthUser() user: AuthUserId): Promise<MsgResDTO> {
-    return null;
+    return this.messageService.findMsgLatest(user);
   }
 
   @Query(() => MsgResDTO)
   findMsg(
     @AuthUser() user: AuthUserId,
     @Args('messageFamId', { type: () => Int }) messageFamId: number,
-  ): Promise<MsgResDTO[]> {
-    return null;
+  ): Promise<MsgResDTO> {
+    return this.messageService.findMsg(user, messageFamId);
   }
 
-  @Query(() => [MsgResDTO])
+  @Query(() => MsgsResDTO)
   findMsgs(
     @AuthUser() user: AuthUserId,
-    @Args('prev', { type: () => Int }) prev: number,
-  ): Promise<MsgResDTO[]> {
-    return null;
+    @Args() paginationReqDTO: PaginationReqDTO,
+  ): Promise<MsgsResDTO> {
+    return this.messageService.findMsgs(user, paginationReqDTO);
   }
 
   /** keep 관련 */
 
-  @Query(() => [MsgResDTO])
+  @Query(() => MsgsResDTO)
   findMsgsKept(
     @AuthUser() user: AuthUserId,
-    @Args('prev', { type: () => Int }) prev: number,
-  ): Promise<MsgResDTO[]> {
-    return null;
+    @Args() paginationReqDTO: PaginationReqDTO,
+  ): Promise<MsgsResDTO> {
+    return this.messageService.findMsgsKept(user, paginationReqDTO);
   }
 
   @Mutation(() => BaseResponseDTO)
@@ -55,7 +57,7 @@ export class MessageResolver {
     @AuthUser() user: AuthUserId,
     @Args('messageFamId', { type: () => Int }) messageFamId: number,
   ): Promise<BaseResponseDTO> {
-    return null;
+    return this.messageService.keepMsg(user, messageFamId);
   }
 
   @Mutation(() => BaseResponseDTO)
@@ -63,25 +65,25 @@ export class MessageResolver {
     @AuthUser() user: AuthUserId,
     @Args('messageFamId', { type: () => Int }) messageFamId: number,
   ): Promise<BaseResponseDTO> {
-    return null;
+    return this.messageService.unkeepMsg(user, messageFamId);
   }
 
   /** comment 관련 */
 
-  @Query(() => [MessageComment])
+  @Query(() => MsgCommentsResDTO)
   findMsgComments(
     @AuthUser() user: AuthUserId,
-    @Args('reqDTO') msgCommentReqDTO: MsgCommentReqDTO,
-  ): Promise<MessageComment[]> {
-    return null;
+    @Args() msgCommentReqDTO: MsgCommentReqDTO,
+  ): Promise<MsgCommentsResDTO> {
+    return this.messageService.findMsgComments(user, msgCommentReqDTO);
   }
 
   @Mutation(() => BaseResponseDTO)
   createMsgComment(
     @AuthUser() user: AuthUserId,
-    @Args('reqDTO') createMsgCommentReqDTO: CreateMsgCommentReqDTO,
+    @Args() createMsgCommentReqDTO: CreateMsgCommentReqDTO,
   ): Promise<BaseResponseDTO> {
-    return null;
+    return this.messageService.createMsgComment(user, createMsgCommentReqDTO);
   }
 
   @Mutation(() => BaseResponseDTO)
@@ -89,6 +91,6 @@ export class MessageResolver {
     @AuthUser() user: AuthUserId,
     @Args('commentId', { type: () => Int }) commentId: number,
   ): Promise<BaseResponseDTO> {
-    return null;
+    return this.messageService.deleteMsgComment(user, commentId);
   }
 }

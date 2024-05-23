@@ -1,9 +1,9 @@
 import { IsEnum } from 'class-validator';
 import { DailyEmotionType } from '../constants/daily-emotion-type.enum';
-import { Field, InputType } from '@nestjs/graphql';
+import { ArgsType, Field } from '@nestjs/graphql';
 
-@InputType()
-export class CreateDailyEmoReqDTO {
+@ArgsType()
+export class ChooseDailyEmoReqDTO {
   /**
    * 필드 하나밖에 없지만
    * 깔끔하게 class validator 사용

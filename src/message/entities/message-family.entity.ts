@@ -3,7 +3,8 @@ import { Family } from 'src/family/entities/family.entity';
 import { Entity, Column, ManyToOne, OneToMany } from 'typeorm';
 import { Message } from './message.entity';
 import { MessageComment } from './message-comment.entity';
-import { Field, ObjectType } from '@nestjs/graphql';
+import { Field, Int, ObjectType } from '@nestjs/graphql';
+import { MessageKeep } from './message-keep.entity';
 
 @Entity()
 @ObjectType()
@@ -22,6 +23,10 @@ export class MessageFamily extends CoreEntity {
   @Field(() => Message)
   message: Message;
 
+  @Column()
+  @Field(() => Int)
+  familyId: number;
+
   @ManyToOne(() => Family, { onDelete: 'CASCADE', onUpdate: 'CASCADE' })
   @Field(() => Family)
   family: Family;
@@ -29,6 +34,20 @@ export class MessageFamily extends CoreEntity {
   @OneToMany(() => MessageComment, (comment) => comment.message, {
     eager: false,
   })
-  @Field(() => [MessageComment])
+  //   @Field(() => [MessageComment])
   comments: MessageComment[];
+
+  @OneToMany(() => MessageKeep, (keep) => keep.message, { eager: false })
+  //   @Field(() => [MessageKeep])
+  keeps: MessageKeep[];
+
+  /**
+   * Entity field 아님 - computed field
+   * TODO: Entity - DTO(ObjectType) 분리 고려하기
+   */
+  @Field(() => Boolean, { nullable: true })
+  isKept?: boolean;
+
+  @Field(() => Int, { nullable: true })
+  commentsCount?: number;
 }

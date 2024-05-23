@@ -35,7 +35,6 @@ import { PhotoFile } from './photo/entities/photo-file.entity';
 import { PhotoComment } from './photo/entities/photo-comment.entity';
 import { PhotoLike } from './photo/entities/photo-like.entity';
 import { Letter } from './letter/entities/letter.entity';
-import { LetterKeep } from './letter/entities/letter-keep.entity';
 import { LetterGuide } from './letter/entities/letter-guide.entity';
 import { FamilyPedia } from './family-pedia/entities/family-pedia.entity';
 import { FamilyPediaQuestion } from './family-pedia/entities/family-pedia-question';
@@ -68,7 +67,6 @@ import { DailyEmotionModule } from './daily-emotion/daily-emotion.module';
         PhotoComment,
         PhotoLike,
         Letter,
-        LetterKeep,
         LetterGuide,
         FamilyPedia,
         FamilyPediaQuestion,

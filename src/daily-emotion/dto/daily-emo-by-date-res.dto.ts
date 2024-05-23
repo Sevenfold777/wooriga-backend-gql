@@ -1,11 +1,9 @@
 import { Field, ObjectType } from '@nestjs/graphql';
-import { EmotionWithUserId } from './emotion-with-userId-req.dto';
+import { BaseResponseDTO } from 'src/common/dto/base-res.dto';
+import { DailyEmoByDateDTO } from './daily-emo-by-date.dto';
 
 @ObjectType()
-export class DailyEmoByDateResDTO {
-  @Field(() => Date)
-  date: Date;
-
-  @Field(() => EmotionWithUserId)
-  emotions: EmotionWithUserId[];
+export class DailyEmoByDateResDTO extends BaseResponseDTO {
+  @Field(() => [DailyEmoByDateDTO], { nullable: true })
+  dailyEmotionsByDate?: DailyEmoByDateDTO[];
 }

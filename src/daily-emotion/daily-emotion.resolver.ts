@@ -4,56 +4,52 @@ import { DailyEmotion } from './entities/daily-emotion.entity';
 import { BaseResponseDTO } from 'src/common/dto/base-res.dto';
 import { AuthUser } from 'src/auth/decorators/auth-user.decorator';
 import { AuthUserId } from 'src/auth/constants/auth-user-id.type';
-import { CreateDailyEmoReqDTO } from './dto/create-daily-emo-req.dto';
-import { EditDailyEmoReqDTO } from './dto/edit-daily-emo-req.dto';
+import { ChooseDailyEmoReqDTO } from './dto/choose-daily-emo-req.dto';
 import { DailyEmoByDateResDTO } from './dto/daily-emo-by-date-res.dto';
+import { DailyEmoResDTO } from './dto/daily-emo-res.dto';
+import { DailyEmosResDTO } from './dto/daily-emos-res.dto';
+import { PaginationByDateReqDTO } from './dto/pagination-by-date-req.dto';
 
 @Resolver(() => DailyEmotion)
 export class DailyEmotionResolver {
   constructor(private readonly dailyEmotionService: DailyEmotionService) {}
 
-  @Query(() => DailyEmotion)
-  findMyEmotionToday(@AuthUser() user: AuthUserId): Promise<DailyEmotion> {
-    return null;
+  @Query(() => DailyEmoResDTO)
+  findMyEmotionToday(@AuthUser() user: AuthUserId): Promise<DailyEmoResDTO> {
+    return this.dailyEmotionService.findMyEmotionToday(user);
   }
 
-  @Query(() => [DailyEmotion])
+  @Query(() => DailyEmosResDTO)
   findFamilyEmotionsToday(
     @AuthUser() user: AuthUserId,
-  ): Promise<DailyEmotion[]> {
-    return null;
+  ): Promise<DailyEmosResDTO> {
+    return this.dailyEmotionService.findFamilyEmotionsToday(user);
   }
 
-  @Query(() => [DailyEmoByDateResDTO])
+  @Query(() => DailyEmoByDateResDTO)
   findFamilyEmotions(
     @AuthUser() user: AuthUserId,
-    @Args('prev', { type: () => Int }) prev: number,
-  ): Promise<DailyEmoByDateResDTO[]> {
-    return null;
+    @Args() paginationReqDTO: PaginationByDateReqDTO,
+  ): Promise<DailyEmoByDateResDTO> {
+    return this.dailyEmotionService.findFamilyEmotions(user, paginationReqDTO);
+  }
+
+  @Mutation(() => BaseResponseDTO, {
+    description: 'insert, update 모두 진행. Arg로 id 입력시 update.',
+  })
+  chooseDailyEmotion(
+    @AuthUser() user: AuthUserId,
+    @Args() chooseDailyEmoReqDTO: ChooseDailyEmoReqDTO,
+  ): Promise<BaseResponseDTO> {
+    return this.dailyEmotionService.chooseDailyEmotion(
+      user,
+      chooseDailyEmoReqDTO,
+    );
   }
 
   @Mutation(() => BaseResponseDTO)
-  createDailyEmotion(
-    @AuthUser() user: AuthUserId,
-    @Args('reqDTO') createDailyEmoReqDTO: CreateDailyEmoReqDTO,
-  ): Promise<BaseResponseDTO> {
-    return null;
-  }
-
-  @Mutation(() => BaseResponseDTO)
-  deleteDailyEmotion(
-    @AuthUser() user: AuthUserId,
-    @Args('id', { type: () => Int }) id: number,
-  ): Promise<BaseResponseDTO> {
-    return null;
-  }
-
-  @Mutation(() => BaseResponseDTO)
-  editDailyEmotion(
-    @AuthUser() user: AuthUserId,
-    @Args('reqDTO') editDailyEmoReqDTO: EditDailyEmoReqDTO,
-  ): Promise<BaseResponseDTO> {
-    return null;
+  deleteDailyEmotion(@AuthUser() user: AuthUserId): Promise<BaseResponseDTO> {
+    return this.dailyEmotionService.deleteDailyEmotion(user);
   }
 
   @Mutation(() => BaseResponseDTO)
@@ -61,6 +57,6 @@ export class DailyEmotionResolver {
     @AuthUser() user: AuthUserId,
     @Args('targetId', { type: () => Int }) targetId: number,
   ): Promise<BaseResponseDTO> {
-    return null;
+    return this.dailyEmotionService.pokeFamilyEmotion(user, targetId);
   }
 }

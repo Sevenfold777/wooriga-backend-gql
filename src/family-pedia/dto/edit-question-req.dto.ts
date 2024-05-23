@@ -1,8 +1,8 @@
-import { Field, InputType, Int } from '@nestjs/graphql';
+import { ArgsType, Field, Int } from '@nestjs/graphql';
 import { CreateQuestionReqDTO } from './create-question-req.dto';
 import { IsNumber } from 'class-validator';
 
-@InputType()
+@ArgsType()
 export class EditQuestionReqDTO extends CreateQuestionReqDTO {
   @Field(() => Int)
   @IsNumber()

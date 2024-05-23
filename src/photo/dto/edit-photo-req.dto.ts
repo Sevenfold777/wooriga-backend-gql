@@ -1,8 +1,8 @@
-import { Field, InputType, Int, PartialType } from '@nestjs/graphql';
+import { ArgsType, Field, Int, PartialType } from '@nestjs/graphql';
 import { CreatePhotoReqDTO } from './create-photo-req.dto';
 import { IsNumber } from 'class-validator';
 
-@InputType()
+@ArgsType()
 export class EditPhotoReqDTO extends PartialType(CreatePhotoReqDTO) {
   @Field(() => Int)
   @IsNumber()

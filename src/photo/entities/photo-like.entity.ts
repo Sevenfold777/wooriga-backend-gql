@@ -16,7 +16,7 @@ export class PhotoLike extends CoreEntity {
    * */
 
   //   @ManyToOne(() => Photo, (photo) => photo.likes, { onDelete: 'CASCADE' }) // 양방향
-  @ManyToOne(() => Photo, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Photo, (photo) => photo.likes, { onDelete: 'CASCADE' })
   @Field(() => Photo)
   photo: Photo;
 

@@ -24,34 +24,28 @@ export class UserResolver {
 
   @Public()
   @Mutation(() => CreateResDTO)
-  signUp(
-    @Args('reqDTO', { type: () => SignUpReqDTO }) signUpReqDTO: SignUpReqDTO,
-  ): Promise<CreateResDTO> {
+  signUp(@Args() signUpReqDTO: SignUpReqDTO): Promise<CreateResDTO> {
     return this.userService.signUp(signUpReqDTO);
   }
 
   @Mutation(() => BaseResponseDTO)
   editUser(
     @AuthUser() user: AuthUserId,
-    @Args('reqDTO', { type: () => EditUserReqDTO })
-    editUserReqDTO: EditUserReqDTO,
+    @Args() editUserReqDTO: EditUserReqDTO,
   ): Promise<BaseResponseDTO> {
     return this.userService.editUser(user, editUserReqDTO);
   }
 
   @Public()
   @Mutation(() => SignInResDTO)
-  signIn(
-    @Args('reqDTO', { type: () => SignInReqDTO }) signInReqDTO: SignInReqDTO,
-  ): Promise<SignInResDTO> {
+  signIn(@Args() signInReqDTO: SignInReqDTO): Promise<SignInResDTO> {
     return this.userService.signIn(signInReqDTO);
   }
 
   @Public()
   @Mutation(() => SignInResDTO)
   refreshToken(
-    @Args('reqDTO', { type: () => RefreshTokenReqDTO })
-    refreshTokenReqDTO: RefreshTokenReqDTO,
+    @Args() refreshTokenReqDTO: RefreshTokenReqDTO,
   ): Promise<SignInResDTO> {
     return this.userService.refreshToken(refreshTokenReqDTO);
   }

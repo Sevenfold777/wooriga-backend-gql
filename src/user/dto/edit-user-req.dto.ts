@@ -1,8 +1,8 @@
-import { Field, InputType } from '@nestjs/graphql';
+import { ArgsType, Field } from '@nestjs/graphql';
 import { IsBoolean, IsEnum, IsNotEmpty, IsString } from 'class-validator';
 import { FamilyPosition } from '../constants/family-position.enum';
 
-@InputType()
+@ArgsType()
 export class EditUserReqDTO {
   @Field()
   @IsString()

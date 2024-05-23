@@ -6,12 +6,14 @@ import { User } from './entities/user.entity';
 import { UserAuth } from './entities/user-auth.entity';
 import { AuthModule } from 'src/auth/auth.module';
 import { FamilyModule } from 'src/family/family.module';
+import { FamilyPediaModule } from 'src/family-pedia/family-pedia.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([User, UserAuth]),
     AuthModule,
     FamilyModule,
+    FamilyPediaModule,
   ],
   providers: [UserResolver, UserService],
 })

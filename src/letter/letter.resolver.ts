@@ -4,23 +4,24 @@ import { LetterService } from './letter.service';
 import { AuthUserId } from 'src/auth/constants/auth-user-id.type';
 import { BaseResponseDTO } from 'src/common/dto/base-res.dto';
 import { SendLetterReqDTO } from './dto/send-letter-req.dto';
-import { SendLetterResDTO } from './dto/send-letter-res.dto';
 import { EditLetterReqDTO } from './dto/edit-letter-req.dto';
 import { LetterReqDTO } from './dto/letter-req.dto';
-import { Letter } from './entities/letter.entity';
 import { LetterBoxReqDTO } from './dto/letter-box-req.dto';
-import { LetterGuide } from './entities/letter-guide.entity';
+import { CreateResDTO } from 'src/common/dto/create-res.dto';
+import { LetterResDTO } from './dto/letter-res.dto';
+import { LetterBoxResDTO } from './dto/letter-box-res.dto';
+import { LetterGuideResDTO } from './dto/letter-guide-res.dto';
 
 @Resolver()
 export class LetterResolver {
   constructor(private readonly letterService: LetterService) {}
 
-  @Mutation(() => SendLetterResDTO)
+  @Mutation(() => CreateResDTO)
   sendLetter(
     @AuthUser() user: AuthUserId,
-    @Args('reqDTO') sendLetterReqDTO: SendLetterReqDTO,
-  ): Promise<SendLetterResDTO> {
-    return null;
+    @Args() sendLetterReqDTO: SendLetterReqDTO,
+  ): Promise<CreateResDTO> {
+    return this.letterService.sendLetter(user, sendLetterReqDTO);
   }
 
   @Mutation(() => BaseResponseDTO)
@@ -28,15 +29,15 @@ export class LetterResolver {
     @AuthUser() user: AuthUserId,
     @Args('id', { type: () => Int }) id: number,
   ): Promise<BaseResponseDTO> {
-    return null;
+    return this.letterService.readLetter(user, id);
   }
 
   @Mutation(() => BaseResponseDTO)
   editLetter(
     @AuthUser() user: AuthUserId,
-    @Args('reqDTO') editLetterReqDTO: EditLetterReqDTO,
+    @Args() editLetterReqDTO: EditLetterReqDTO,
   ): Promise<BaseResponseDTO> {
-    return null;
+    return this.letterService.editLetter(user, editLetterReqDTO);
   }
 
   @Mutation(() => BaseResponseDTO)
@@ -44,31 +45,23 @@ export class LetterResolver {
     @AuthUser() user: AuthUserId,
     @Args('id', { type: () => Int }) id: number,
   ): Promise<BaseResponseDTO> {
-    return null;
+    return this.letterService.deleteLetter(user, id);
   }
 
-  @Query(() => Letter)
+  @Query(() => LetterResDTO)
   findLetter(
     @AuthUser() user: AuthUserId,
-    @Args('reqDTO') letterReqDTO: LetterReqDTO,
-  ): Promise<Letter> {
-    return null;
+    @Args() letterReqDTO: LetterReqDTO,
+  ): Promise<LetterResDTO> {
+    return this.letterService.findLetter(user, letterReqDTO);
   }
 
-  @Query(() => [Letter])
+  @Query(() => LetterBoxResDTO)
   findLetterBox(
     @AuthUser() user: AuthUserId,
-    @Args('reqDTO') letterBoxReqDTO: LetterBoxReqDTO,
-  ): Promise<Letter[]> {
-    return null;
-  }
-
-  @Query(() => [Letter])
-  findKept(
-    @AuthUser() user: AuthUserId,
-    @Args('prev', { type: () => Int }) prev: number,
-  ): Promise<Letter[]> {
-    return null;
+    @Args() letterBoxReqDTO: LetterBoxReqDTO,
+  ): Promise<LetterBoxResDTO> {
+    return this.letterService.findLetterBox(user, letterBoxReqDTO);
   }
 
   @Mutation(() => BaseResponseDTO)
@@ -76,7 +69,7 @@ export class LetterResolver {
     @AuthUser() user: AuthUserId,
     @Args('id', { type: () => Int }) id: number,
   ): Promise<BaseResponseDTO> {
-    return null;
+    return this.letterService.keepLetter(user, id);
   }
 
   @Mutation(() => BaseResponseDTO)
@@ -84,11 +77,11 @@ export class LetterResolver {
     @AuthUser() user: AuthUserId,
     @Args('id', { type: () => Int }) id: number,
   ): Promise<BaseResponseDTO> {
-    return null;
+    return this.letterService.unkeepLetter(user, id);
   }
 
-  @Query(() => LetterGuide)
-  getLetterGuide(): Promise<LetterGuide> {
-    return null;
+  @Query(() => LetterGuideResDTO)
+  getLetterGuide(): Promise<LetterGuideResDTO> {
+    return this.letterService.getLetterGuide();
   }
 }

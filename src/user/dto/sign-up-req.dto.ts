@@ -1,4 +1,4 @@
-import { Field, InputType } from '@nestjs/graphql';
+import { ArgsType, Field } from '@nestjs/graphql';
 import {
   IsBoolean,
   IsEmail,
@@ -10,7 +10,7 @@ import {
 import { AuthProvider } from '../constants/auth-provider.enum';
 import { FamilyPosition } from '../constants/family-position.enum';
 
-@InputType()
+@ArgsType()
 export class SignUpReqDTO {
   @Field()
   @IsEmail()

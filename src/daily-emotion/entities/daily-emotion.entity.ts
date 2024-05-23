@@ -1,21 +1,38 @@
-import { CoreEntity } from 'src/common/entites/core.entity';
 import { User } from 'src/user/entities/user.entity';
-import { Entity, Column, ManyToOne } from 'typeorm';
+import {
+  Entity,
+  Column,
+  ManyToOne,
+  PrimaryColumn,
+  CreateDateColumn,
+  UpdateDateColumn,
+} from 'typeorm';
 import { Field, ObjectType } from '@nestjs/graphql';
 import { DailyEmotionType } from '../constants/daily-emotion-type.enum';
 
 @Entity()
 @ObjectType()
-export class DailyEmotion extends CoreEntity {
+export class DailyEmotion {
+  @PrimaryColumn()
+  @Field(() => Date)
+  date: Date;
+
+  @PrimaryColumn()
+  userId: number;
+
+  @ManyToOne(() => User, { onDelete: 'CASCADE', nullable: false })
+  @Field(() => User)
+  user: User;
+
   @Column({ type: 'enum', enum: DailyEmotionType })
   @Field(() => DailyEmotionType)
   type: DailyEmotionType;
 
-  @Column()
+  @CreateDateColumn()
   @Field(() => Date)
-  date: Date;
+  createdAt: Date;
 
-  @ManyToOne(() => User, { onDelete: 'CASCADE' })
-  @Field(() => User)
-  user: User;
+  @UpdateDateColumn()
+  @Field(() => Date)
+  updatedAt: Date;
 }

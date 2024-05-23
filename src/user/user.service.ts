@@ -17,13 +17,14 @@ import { TOKEN_TYPE } from 'src/auth/constants/token-type.enum';
 import { AuthProvider } from './constants/auth-provider.enum';
 import { FamilyService } from 'src/family/family.service';
 import { SignInRejectType } from './constants/sign-in-reject-type.enum';
-import { PhotoLike } from 'src/photo/entities/photo-like.entity';
+import { FamilyPediaService } from 'src/family-pedia/family-pedia.service';
 
 @Injectable()
 export class UserService {
   constructor(
     private readonly authService: AuthService,
     private readonly familyService: FamilyService,
+    private readonly pediaService: FamilyPediaService,
     @InjectDataSource() private dataSource: DataSource,
     @InjectRepository(User) private userRepository: Repository<User>,
     @InjectRepository(UserAuth)
@@ -144,7 +145,8 @@ export class UserService {
         .updateEntity(false)
         .execute();
 
-      // TODO: create family pedia service
+      // create family pedia service
+      await this.pediaService.createFamilyPedia({ ownerId: userId });
 
       await queryRunner.commitTransaction();
 

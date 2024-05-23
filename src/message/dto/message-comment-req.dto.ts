@@ -1,10 +1,10 @@
-import { Field, InputType, Int } from '@nestjs/graphql';
+import { ArgsType, Field, Int } from '@nestjs/graphql';
+import { IsNumber } from 'class-validator';
+import { PaginationReqDTO } from 'src/common/dto/pagination-req.dto';
 
-@InputType()
-export class MsgCommentReqDTO {
+@ArgsType()
+export class MsgCommentReqDTO extends PaginationReqDTO {
   @Field(() => Int)
+  @IsNumber()
   messageFamId: number;
-
-  @Field(() => Int)
-  prev: number;
 }

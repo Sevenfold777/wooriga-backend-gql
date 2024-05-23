@@ -1,8 +1,8 @@
-import { Field, InputType } from '@nestjs/graphql';
+import { ArgsType, Field } from '@nestjs/graphql';
 import { IsEnum, IsOptional, IsString } from 'class-validator';
 import { BannerType } from '../constants/banner-type.enum';
 
-@InputType()
+@ArgsType()
 export class BannerReqDTO {
   @Field(() => BannerType)
   @IsEnum(BannerType)

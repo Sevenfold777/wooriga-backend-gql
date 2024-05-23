@@ -1,4 +1,4 @@
-import { Field, InputType, Int } from '@nestjs/graphql';
+import { ArgsType, Field, Int } from '@nestjs/graphql';
 import {
   IsString,
   IsEnum,
@@ -7,9 +7,9 @@ import {
   IsNumber,
   IsDate,
 } from 'class-validator';
-import { DailyEmotionType } from 'src/daily-emotion/constants/daily-emotion-type.enum';
+import { LetterEmotionType } from '../constants/letter-emotion-type.enum';
 
-@InputType()
+@ArgsType()
 export class SendLetterReqDTO {
   @Field()
   //   @IsNotEmpty() // for 임시저장
@@ -21,9 +21,9 @@ export class SendLetterReqDTO {
   @IsString()
   payload: string;
 
-  @Field(() => DailyEmotionType)
-  @IsEnum(DailyEmotionType)
-  emotion: DailyEmotionType;
+  @Field(() => LetterEmotionType)
+  @IsEnum(LetterEmotionType)
+  emotion: LetterEmotionType;
 
   @Field(() => Boolean)
   @IsBoolean()

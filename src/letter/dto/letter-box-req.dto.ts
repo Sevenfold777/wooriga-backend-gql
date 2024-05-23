@@ -1,18 +1,19 @@
-import { Field, InputType, Int } from '@nestjs/graphql';
+import { ArgsType, Field } from '@nestjs/graphql';
 import { LetterType } from '../constants/letter-type.enum';
-import { IsBoolean, IsEnum, IsNumber } from 'class-validator';
+import { IsEnum } from 'class-validator';
+import { PaginationReqDTO } from 'src/common/dto/pagination-req.dto';
+import { LetterBoxType } from '../constants/letter-box-type.enum';
 
-@InputType()
-export class LetterBoxReqDTO {
+@ArgsType()
+export class LetterBoxReqDTO extends PaginationReqDTO {
   @Field(() => LetterType)
   @IsEnum(LetterType)
   type: LetterType;
 
-  @Field(() => Int)
-  @IsNumber()
-  prev: number;
-
-  @Field(() => Boolean)
-  @IsBoolean()
-  isTimeCapsule: boolean;
+  @Field(() => LetterBoxType, {
+    nullable: true,
+    defaultValue: LetterBoxType.ALL,
+  })
+  @IsEnum(LetterBoxType)
+  boxType: LetterBoxType;
 }

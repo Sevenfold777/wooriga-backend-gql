@@ -17,13 +17,13 @@ export class FamilyPediaQuestion extends CoreEntity {
   @Field()
   question: string;
 
-  @Column({ name: 'payload' })
-  @Field()
-  answer: string;
+  @Column({ name: 'payload', nullable: true })
+  @Field({ nullable: true })
+  answer?: string;
 
-  @ManyToOne(() => User)
-  @Field(() => User, { description: '질문 작성자' })
-  questioner: User;
+  @ManyToOne(() => User, { nullable: true })
+  @Field(() => User, { description: '질문 작성자', nullable: true })
+  questioner?: User;
 }
 
 /**
