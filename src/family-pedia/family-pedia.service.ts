@@ -144,11 +144,18 @@ export class FamilyPediaService {
     { id, question, pediaId }: EditQuestionReqDTO,
   ): Promise<BaseResponseDTO> {
     try {
+      // pedia owner가 나의 가족인지 확인
+      const pediaExist = await this.pediaFamValidate(pediaId, familyId);
+
+      if (!pediaExist) {
+        throw new Error('Cannot add question to the pedia.');
+      }
+
+      // question update with conditions
       const updateResult = await this.questionRepository
         .createQueryBuilder('question')
         .update()
         .where('questioner.id = :userId', { userId })
-        .andWhere('familyPedia.owner.familyId = :familyId', { familyId }) // TODO
         .andWhere('familyPedia.id = :pediaId', { pediaId })
         .andWhere('id = :id', { id })
         .andWhere('answer IS NULL')
@@ -223,11 +230,18 @@ export class FamilyPediaService {
     { id, answer, pediaId }: AnswerQuestionReqDTO,
   ): Promise<BaseResponseDTO> {
     try {
+      // pedia owner가 나의 가족인지 확인
+      const pediaExist = await this.pediaFamValidate(pediaId, familyId);
+
+      if (!pediaExist) {
+        throw new Error('Cannot add question to the pedia.');
+      }
+
+      // question update with conditions
       const updateResult = await this.questionRepository
         .createQueryBuilder('question')
         .update()
         .where('questioner.id = :userId', { userId })
-        .andWhere('familyPedia.owner.familyId = :familyId', { familyId }) // TODO
         .andWhere('familyPedia.id = :pediaId', { pediaId })
         .andWhere('id = :id', { id })
         .set({ answer })
@@ -242,5 +256,18 @@ export class FamilyPediaService {
     } catch (e) {
       return { result: false, error: e.message };
     }
+  }
+
+  async pediaFamValidate(pediaId: number, familyId: number): Promise<boolean> {
+    const exist = await this.pediaRepository
+      .createQueryBuilder('pedia')
+      .select()
+      .innerJoin('pedia.owner', 'owner', 'owner.familyId = :familyId', {
+        familyId,
+      })
+      .where('pedia.id = :pediaId', { pediaId })
+      .getExists();
+
+    return exist;
   }
 }

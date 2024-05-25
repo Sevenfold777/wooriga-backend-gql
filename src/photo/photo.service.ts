@@ -96,7 +96,12 @@ export class PhotoService {
         .createQueryBuilder('photo')
         .select()
         .addSelect('file.url')
-        .innerJoinAndSelect('photo.author', 'author')
+        .innerJoinAndSelect(
+          'photo.author',
+          'author',
+          'author.famiyId = :familyId',
+          { familyId },
+        )
         .innerJoinAndSelect('photo.files', 'file')
         .orderBy('photo.createdAt', 'DESC')
         .offset(prev * take)
@@ -149,6 +154,20 @@ export class PhotoService {
     photoId: number,
   ): Promise<BaseResponseDTO> {
     try {
+      const likeExist = await this.likeRepository
+        .createQueryBuilder('like')
+        .select()
+        .innerJoin('like.photo', 'photo', 'photo.familyId = :familyId', {
+          familyId,
+        }) // this.photoFamValdiate 쿼리문 통합
+        .where('like.photo.id = :photoId', { photoId })
+        .andWhere('like.user.id = :userId', { userId })
+        .getExists();
+
+      if (likeExist) {
+        throw new Error('Already liked the photo.');
+      }
+
       await this.likeRepository
         .createQueryBuilder('like')
         .insert()
@@ -164,7 +183,7 @@ export class PhotoService {
   }
 
   async unlikePhoto(
-    { userId, familyId }: AuthUserId,
+    { userId }: AuthUserId,
     photoId: number,
   ): Promise<BaseResponseDTO> {
     try {
@@ -185,11 +204,21 @@ export class PhotoService {
     }
   }
 
+  /**
+   * create comment에서는 familiy validation 필요
+   * 우리 가족의 photo에만 댓글을 남길 수 있음
+   */
   async commentPhoto(
     { userId, familyId }: AuthUserId,
     { photoId, payload }: CreatePhotoCommentReqDTO,
   ): Promise<CreateResDTO> {
     try {
+      const photoExist = await this.photoFamValidate(photoId, familyId);
+
+      if (!photoExist) {
+        throw new Error('Cannot comment on the corresponding photo.');
+      }
+
       const insertResult = await this.commentRepository
         .createQueryBuilder('comment')
         .insert()
@@ -208,12 +237,16 @@ export class PhotoService {
     }
   }
 
+  /**
+   * delete comment에서는 familiy validation 하지 않음
+   * 이미 작성된 댓글은 작성한 사용자에게 권한이 귀속
+   */
   async deleteComment(
-    { userId, familyId }: AuthUserId,
+    { userId }: AuthUserId,
     id: number,
   ): Promise<BaseResponseDTO> {
     try {
-      const deleteResult = await this.commentRepository
+      const updateResult = await this.commentRepository
         .createQueryBuilder('comment')
         .update()
         .where('comment.id = :id', { id })
@@ -222,7 +255,7 @@ export class PhotoService {
         .set({ status: CommentStatus.DELETED })
         .execute();
 
-      if (deleteResult.affected !== 1) {
+      if (updateResult.affected !== 1) {
         throw new Error(
           'Cannot delete the comment. (Cannot update status to deleted.)',
         );
@@ -239,11 +272,17 @@ export class PhotoService {
     { photoId, prev, take }: PhotoCommentReqDTO,
   ): Promise<PhotoCommentsResDTO> {
     try {
+      const photoExist = await this.photoFamValidate(photoId, familyId);
+
+      if (!photoExist) {
+        throw new Error('Cannot find the photo.');
+      }
+
       const comments = await this.commentRepository
         .createQueryBuilder('comment')
         .select()
-        .innerJoin('comment.photo', 'photo', 'photo.id = :photoId', { photoId })
-        .where('photo.family.id = :familyId', { familyId })
+        .leftJoinAndSelect('comment.author', 'author')
+        .where('comment.photo.id = :photoId', { photoId })
         .orderBy('createdAt', 'DESC')
         .offset(take * prev)
         .limit(take)
@@ -253,5 +292,23 @@ export class PhotoService {
     } catch (e) {
       return { result: false, error: e.message };
     }
+  }
+
+  /**
+   * PhotoId와 FamilyId를 입력 받아, 해당 Photo가 해당 Family의 소유인지 확인
+   * @param photoId 확인하고자 하는 Photo의 Id
+   * @param familyId 해당 Photo와 매핑된 가족
+   */
+  async photoFamValidate(photoId: number, familyId: number): Promise<boolean> {
+    const exist = await this.photoRepository
+      .createQueryBuilder('photo')
+      .select()
+      .where('photo.id = :photoId', { photoId })
+      .andWhere('photo.familyId = :familyId', {
+        familyId,
+      })
+      .getExists();
+
+    return exist;
   }
 }

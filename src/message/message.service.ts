@@ -1,6 +1,5 @@
 import { Injectable } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
-import { Message } from './entities/message.entity';
 import { MessageComment } from './entities/message-comment.entity';
 import { MessageFamily } from './entities/message-family.entity';
 import { MessageKeep } from './entities/message-keep.entity';
@@ -19,7 +18,6 @@ import { MsgsResDTO } from './dto/messages-res.dto';
 export class MessageService {
   constructor(
     @InjectDataSource() private dataSource: DataSource,
-    @InjectRepository(Message) private messageRepository: Repository<Message>,
     @InjectRepository(MessageFamily)
     private messageFamRepository: Repository<MessageFamily>,
     @InjectRepository(MessageComment)
@@ -46,8 +44,6 @@ export class MessageService {
 
       message.isKept = Boolean(message.keeps.length);
       message.commentsCount = message.comments.length;
-
-      console.log(message);
 
       return { result: true, messageFam: message };
     } catch (e) {
@@ -137,14 +133,17 @@ export class MessageService {
     messageFamId: number,
   ): Promise<BaseResponseDTO> {
     try {
-      const exist = await this.keepRepository
+      const keepExist = await this.keepRepository
         .createQueryBuilder('keep')
         .select()
+        .innerJoin('keep.message', 'message', 'message.familyId = :familyId', {
+          familyId,
+        })
         .where('keep.message.id = :messageFamId', { messageFamId })
         .andWhere('keep.user.id = :userId', { userId })
         .getExists();
 
-      if (exist) {
+      if (keepExist) {
         throw new Error('Already kept message.');
       }
 
@@ -166,7 +165,7 @@ export class MessageService {
   }
 
   async unkeepMsg(
-    { userId, familyId }: AuthUserId,
+    { userId }: AuthUserId,
     messageFamId: number,
   ): Promise<BaseResponseDTO> {
     try {
@@ -175,7 +174,6 @@ export class MessageService {
         .delete()
         .from(MessageKeep)
         .where('message.id = :messageFamId', { messageFamId })
-        // .andWhere('message.family.id = :familyId', { familyId })
         .andWhere('user.id = :userId', { userId })
         .execute();
 
@@ -196,6 +194,12 @@ export class MessageService {
     { messageFamId, take, prev }: MsgCommentReqDTO,
   ): Promise<MsgCommentsResDTO> {
     try {
+      const msgFamExist = await this.msgFamValidate(messageFamId, familyId);
+
+      if (!msgFamExist) {
+        throw new Error('Cannot comment on the given message family.');
+      }
+
       const comments = await this.commentRepository
         .createQueryBuilder('comment')
         .select()
@@ -218,6 +222,12 @@ export class MessageService {
     { messageFamId, payload }: CreateMsgCommentReqDTO,
   ): Promise<BaseResponseDTO> {
     try {
+      const msgFamExist = await this.msgFamValidate(messageFamId, familyId);
+
+      if (!msgFamExist) {
+        throw new Error('Cannot comment on the given message family.');
+      }
+
       await this.commentRepository
         .createQueryBuilder('comment')
         .insert()
@@ -236,8 +246,12 @@ export class MessageService {
     }
   }
 
+  /**
+   * delete comment는 messageFamily familyId validation하지 않음
+   * 자신이 작성한 댓글은 삭제 가능
+   */
   async deleteMsgComment(
-    { userId, familyId }: AuthUserId,
+    { userId }: AuthUserId,
     commentId: number,
   ): Promise<BaseResponseDTO> {
     try {
@@ -258,5 +272,19 @@ export class MessageService {
     } catch (e) {
       return { result: false, error: e.message };
     }
+  }
+
+  async msgFamValidate(
+    messageFamId: number,
+    familyId: number,
+  ): Promise<boolean> {
+    const exist = await this.messageFamRepository
+      .createQueryBuilder('msgFam')
+      .select()
+      .where('msgFam.id = :messageFamId', { messageFamId })
+      .andWhere('msgFam.familyId = :familyId', { familyId })
+      .getExists();
+
+    return exist;
   }
 }

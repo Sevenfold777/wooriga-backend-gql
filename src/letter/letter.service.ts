@@ -15,31 +15,35 @@ import { Letter } from './entities/letter.entity';
 import { LetterType } from './constants/letter-type.enum';
 import { LetterBoxType } from './constants/letter-box-type.enum';
 import { LetterGuideResDTO } from './dto/letter-guide-res.dto';
+import { User } from 'src/user/entities/user.entity';
 
 @Injectable()
 export class LetterService {
   constructor(
     @InjectDataSource() private dataSource: DataSource,
+    @InjectRepository(User) private userRepository: Repository<User>,
     @InjectRepository(Letter) private letterRepository: Repository<Letter>,
     @InjectRepository(LetterGuide)
     private guideRepository: Repository<LetterGuide>,
   ) {}
 
   async sendLetter(
-    { userId }: AuthUserId,
+    { userId, familyId }: AuthUserId,
     sendLetterReqDTO: SendLetterReqDTO,
   ): Promise<CreateResDTO> {
-    const {
-      title,
-      payload,
-      emotion,
-      isTimeCapsule,
-      receiveDate,
-      receivers,
-      isTemp,
-    } = sendLetterReqDTO;
+    // TODO: 임시저장한 편지 수정 로직
 
     try {
+      const {
+        title,
+        payload,
+        emotion,
+        isTimeCapsule,
+        receiveDate,
+        receivers,
+        isTemp,
+      } = sendLetterReqDTO;
+
       let letterId: number;
       // 1. 임시저장
       if (isTemp) {
@@ -58,7 +62,14 @@ export class LetterService {
       }
       // 2. 실제 전송
       else {
-        for (const receiverId of receivers) {
+        const receiversFromDB = await this.userRepository
+          .createQueryBuilder('user')
+          .select()
+          .where('user.id IN(:...receiverIds)', { receiverIds: receivers })
+          .andWhere('user.familyId = :familyId', { familyId })
+          .getMany();
+
+        for (const receiver of receiversFromDB) {
           const newLetter = this.letterRepository.create({
             title,
             payload,
@@ -66,7 +77,7 @@ export class LetterService {
             isTimeCapsule,
             receiveDate: isTimeCapsule ? receiveDate : new Date(),
             sender: { id: userId },
-            ...(receiverId !== -1 && { receiver: { id: receiverId } }),
+            ...(receiver.id !== -1 && { receiver: { id: receiver.id } }),
             ...(isTemp && { isTemp }),
           });
 
@@ -113,6 +124,8 @@ export class LetterService {
     { userId }: AuthUserId,
     editLetterReqDTO: EditLetterReqDTO,
   ): Promise<BaseResponseDTO> {
+    // TODO: receiver 수정 가능하게 할지
+
     try {
       const {
         id,
