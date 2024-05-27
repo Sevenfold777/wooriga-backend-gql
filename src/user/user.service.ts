@@ -31,7 +31,7 @@ export class UserService {
     private userAuthRepository: Repository<UserAuth>,
   ) {}
 
-  async myProfile({ userId }: AuthUserId): Promise<UserResDTO> {
+  async findMyProfile({ userId }: AuthUserId): Promise<UserResDTO> {
     try {
       const user = await this.userRepository
         .createQueryBuilder()

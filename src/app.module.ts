@@ -2,7 +2,6 @@ import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { GraphQLModule } from '@nestjs/graphql';
 import { ApolloDriver, ApolloDriverConfig } from '@nestjs/apollo';
-import { SampleModule } from './sample/sample.module';
 import { UserModule } from './user/user.module';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -82,7 +81,6 @@ import { DailyEmotionModule } from './daily-emotion/daily-emotion.module';
       playground: true,
     }),
     ScheduleModule.forRoot(),
-    SampleModule,
     UserModule,
     AuthModule,
     UploadModule,

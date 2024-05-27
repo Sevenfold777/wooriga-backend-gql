@@ -19,7 +19,7 @@ export class UserResolver {
 
   @Query(() => UserResDTO)
   findMyProfile(@AuthUser() user: AuthUserId): Promise<UserResDTO> {
-    return this.userService.myProfile(user);
+    return this.userService.findMyProfile(user);
   }
 
   @Public()
