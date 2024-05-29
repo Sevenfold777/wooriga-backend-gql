@@ -241,7 +241,7 @@ export class PhotoService {
    * delete comment에서는 familiy validation 하지 않음
    * 이미 작성된 댓글은 작성한 사용자에게 권한이 귀속
    */
-  async deleteComment(
+  async deletePhotoComment(
     { userId }: AuthUserId,
     id: number,
   ): Promise<BaseResponseDTO> {

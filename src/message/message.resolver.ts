@@ -11,6 +11,7 @@ import { CreateMsgCommentReqDTO } from './dto/create-message-comment-req.dto';
 import { PaginationReqDTO } from 'src/common/dto/pagination-req.dto';
 import { MsgCommentsResDTO } from './dto/message-comments-res.dto';
 import { MsgsResDTO } from './dto/messages-res.dto';
+import { CreateResDTO } from 'src/common/dto/create-res.dto';
 
 @Resolver(() => Message)
 export class MessageResolver {
@@ -78,11 +79,11 @@ export class MessageResolver {
     return this.messageService.findMsgComments(user, msgCommentReqDTO);
   }
 
-  @Mutation(() => BaseResponseDTO)
+  @Mutation(() => CreateResDTO)
   createMsgComment(
     @AuthUser() user: AuthUserId,
     @Args() createMsgCommentReqDTO: CreateMsgCommentReqDTO,
-  ): Promise<BaseResponseDTO> {
+  ): Promise<CreateResDTO> {
     return this.messageService.createMsgComment(user, createMsgCommentReqDTO);
   }
 

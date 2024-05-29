@@ -89,11 +89,11 @@ export class PhotoResolver {
   }
 
   @Mutation(() => BaseResponseDTO)
-  deleteComment(
+  deletePhotoComment(
     @AuthUser() user: AuthUserId,
     @Args('id', { type: () => Int }) id: number,
   ): Promise<BaseResponseDTO> {
-    return this.photoService.deleteComment(user, id);
+    return this.photoService.deletePhotoComment(user, id);
   }
 
   @Query(() => PhotoCommentsResDTO)

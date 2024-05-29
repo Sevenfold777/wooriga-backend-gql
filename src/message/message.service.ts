@@ -13,6 +13,7 @@ import { MsgCommentsResDTO } from './dto/message-comments-res.dto';
 import { CommentStatus } from 'src/common/constants/comment-status.enum';
 import { AuthUserId } from 'src/auth/constants/auth-user-id.type';
 import { MsgsResDTO } from './dto/messages-res.dto';
+import { CreateResDTO } from 'src/common/dto/create-res.dto';
 
 @Injectable()
 export class MessageService {
@@ -29,12 +30,18 @@ export class MessageService {
   async findMsgLatest({ userId, familyId }: AuthUserId): Promise<MsgResDTO> {
     try {
       // TODO: left join 3개 Vs. Multiple Queries (test 해보기)
+      /**
+       * - join의 대상이 그렇게 많지 않기 때문에 multiple query로 나누지 않음
+       * - join에 조건 주어 성능 향상 노력
+       * - 여러 개의 message query 할 때 대비 (2*N 방지)
+       */
+
       const message = await this.messageFamRepository
         .createQueryBuilder('msgFam')
         .select()
         .addSelect('keep.id')
         .addSelect('comment.id')
-        .leftJoinAndSelect('msgFam.message', 'message')
+        .innerJoinAndSelect('msgFam.message', 'message')
         .leftJoin('msgFam.keeps', 'keep', 'keep.user.id = :userId', { userId }) // to count
         .leftJoin('msgFam.comments', 'comment') // to count
         .where('msgFam.family.id = :familyId', { familyId })
@@ -61,7 +68,7 @@ export class MessageService {
         .select()
         .addSelect('keep.id')
         .addSelect('comment.id')
-        .leftJoinAndSelect('msgFam.message', 'message')
+        .innerJoinAndSelect('msgFam.message', 'message')
         .leftJoin('msgFam.keeps', 'keep', 'keep.user.id = :userId', { userId }) // to count
         .leftJoin('msgFam.comments', 'comment') // to count
         .where('msgFam.id = :messageFamId', { messageFamId })
@@ -86,7 +93,7 @@ export class MessageService {
       const messages = await this.messageFamRepository
         .createQueryBuilder('msgFam')
         .select()
-        .leftJoinAndSelect('msgFam.message', 'message')
+        .innerJoinAndSelect('msgFam.message', 'message')
         .where('receiveDate <= :now', { now: new Date() })
         .andWhere('msgFam.family.id = :familyId', { familyId })
         .orderBy('receiveDate', 'DESC')
@@ -118,11 +125,17 @@ export class MessageService {
         )
         .innerJoinAndSelect('messageFam.message', 'message')
         .where('keep.user.id = :userId', { userId })
+        .orderBy('receiveDate', 'DESC')
         .limit(take)
         .offset(take * prev)
         .getMany();
 
-      return { result: true, messageFams: keeps.map((k) => k.message) };
+      const messages = keeps.map((k) => {
+        k.message.isKept = true;
+        return k.message;
+      });
+
+      return { result: true, messageFams: messages };
     } catch (e) {
       return { result: false, error: e.message };
     }
@@ -133,15 +146,20 @@ export class MessageService {
     messageFamId: number,
   ): Promise<BaseResponseDTO> {
     try {
+      const msgFamExist = await this.msgFamValidate(messageFamId, familyId);
+
+      if (!msgFamExist) {
+        throw new Error('Cannot keep given message family.');
+      }
+
       const keepExist = await this.keepRepository
         .createQueryBuilder('keep')
-        .select()
-        .innerJoin('keep.message', 'message', 'message.familyId = :familyId', {
-          familyId,
+        .select('keep.id')
+        .innerJoin('keep.message', 'message', 'message.id = :messageFamId', {
+          messageFamId,
         })
-        .where('keep.message.id = :messageFamId', { messageFamId })
-        .andWhere('keep.user.id = :userId', { userId })
-        .getExists();
+        .where('keep.user.id = :userId', { userId })
+        .getOne();
 
       if (keepExist) {
         throw new Error('Already kept message.');
@@ -165,10 +183,16 @@ export class MessageService {
   }
 
   async unkeepMsg(
-    { userId }: AuthUserId,
+    { userId, familyId }: AuthUserId,
     messageFamId: number,
   ): Promise<BaseResponseDTO> {
     try {
+      const msgFamExist = await this.msgFamValidate(messageFamId, familyId);
+
+      if (!msgFamExist) {
+        throw new Error('Cannot unkeep given message family.');
+      }
+
       const deleteResult = await this.keepRepository
         .createQueryBuilder('keep')
         .delete()
@@ -197,13 +221,13 @@ export class MessageService {
       const msgFamExist = await this.msgFamValidate(messageFamId, familyId);
 
       if (!msgFamExist) {
-        throw new Error('Cannot comment on the given message family.');
+        throw new Error('Cannot access to given message family.');
       }
 
       const comments = await this.commentRepository
         .createQueryBuilder('comment')
         .select()
-        .leftJoinAndSelect('comment.author', 'author')
+        .leftJoinAndSelect('comment.author', 'author') // TODO: 탈퇴했으면 앱단에서 알 수 없음 표시 (inner 대신 left join 이유)
         .where('comment.message.id = :messageFamId', { messageFamId })
         .andWhere('comment.status = :status', { status: CommentStatus.ACTIVE })
         .orderBy('comment.createdAt', 'DESC')
@@ -220,7 +244,7 @@ export class MessageService {
   async createMsgComment(
     { userId, familyId }: AuthUserId,
     { messageFamId, payload }: CreateMsgCommentReqDTO,
-  ): Promise<BaseResponseDTO> {
+  ): Promise<CreateResDTO> {
     try {
       const msgFamExist = await this.msgFamValidate(messageFamId, familyId);
 
@@ -228,7 +252,7 @@ export class MessageService {
         throw new Error('Cannot comment on the given message family.');
       }
 
-      await this.commentRepository
+      const insertResult = await this.commentRepository
         .createQueryBuilder('comment')
         .insert()
         .into(MessageComment)
@@ -240,7 +264,9 @@ export class MessageService {
         .updateEntity(false)
         .execute();
 
-      return { result: true };
+      const commentId = insertResult.raw?.insertId;
+
+      return { result: true, id: commentId };
     } catch (e) {
       return { result: false, error: e.message };
     }
@@ -278,13 +304,14 @@ export class MessageService {
     messageFamId: number,
     familyId: number,
   ): Promise<boolean> {
+    /* getExist보다 성능 이점 */
     const exist = await this.messageFamRepository
       .createQueryBuilder('msgFam')
-      .select()
+      .select('msgFam.id')
       .where('msgFam.id = :messageFamId', { messageFamId })
       .andWhere('msgFam.familyId = :familyId', { familyId })
-      .getExists();
+      .getOne();
 
-    return exist;
+    return Boolean(exist);
   }
 }
