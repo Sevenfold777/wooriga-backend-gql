@@ -25,14 +25,6 @@ describe('Message Module (e2e)', () => {
     await app.init();
   });
 
-  beforeEach(() => {
-    console.log('-'.repeat(20), `START`, '-'.repeat(20));
-  });
-
-  afterEach(() => {
-    console.log('-'.repeat(20), `END`, '-'.repeat(20));
-  });
-
   afterAll(async () => {
     await app.close();
   });

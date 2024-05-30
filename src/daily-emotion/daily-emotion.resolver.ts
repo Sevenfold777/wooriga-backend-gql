@@ -37,19 +37,16 @@ export class DailyEmotionResolver {
   @Mutation(() => BaseResponseDTO, {
     description: 'insert, update 모두 진행. Arg로 id 입력시 update.',
   })
-  chooseDailyEmotion(
+  chooseEmotion(
     @AuthUser() user: AuthUserId,
     @Args() chooseDailyEmoReqDTO: ChooseDailyEmoReqDTO,
   ): Promise<BaseResponseDTO> {
-    return this.dailyEmotionService.chooseDailyEmotion(
-      user,
-      chooseDailyEmoReqDTO,
-    );
+    return this.dailyEmotionService.chooseEmotion(user, chooseDailyEmoReqDTO);
   }
 
   @Mutation(() => BaseResponseDTO)
-  deleteDailyEmotion(@AuthUser() user: AuthUserId): Promise<BaseResponseDTO> {
-    return this.dailyEmotionService.deleteDailyEmotion(user);
+  deleteEmotion(@AuthUser() user: AuthUserId): Promise<BaseResponseDTO> {
+    return this.dailyEmotionService.deleteEmotion(user);
   }
 
   @Mutation(() => BaseResponseDTO)

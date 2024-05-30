@@ -7,18 +7,19 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { Field, ObjectType } from '@nestjs/graphql';
+import { Field, Int, ObjectType } from '@nestjs/graphql';
 import { DailyEmotionType } from '../constants/daily-emotion-type.enum';
 
 @Entity()
 @ObjectType()
 export class DailyEmotion {
   @PrimaryColumn()
-  @Field(() => Date)
-  date: Date;
+  @Field(() => Int)
+  userId: number;
 
   @PrimaryColumn()
-  userId: number;
+  @Field(() => Date)
+  date: Date;
 
   @ManyToOne(() => User, { onDelete: 'CASCADE', nullable: false })
   @Field(() => User)

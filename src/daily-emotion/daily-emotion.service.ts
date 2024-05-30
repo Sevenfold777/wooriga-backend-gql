@@ -32,7 +32,7 @@ export class DailyEmotionService {
         .select()
         .where('date = :date', { date: today })
         .andWhere('emo.user.id = :userId', { userId })
-        .getOneOrFail();
+        .getOne();
 
       return { result: true, dailyEmotion };
     } catch (e) {
@@ -41,6 +41,7 @@ export class DailyEmotionService {
   }
 
   async findFamilyEmotionsToday({
+    userId,
     familyId,
   }: AuthUserId): Promise<DailyEmosResDTO> {
     const today = new Date(new Date().toLocaleDateString('ko-KR'));
@@ -53,7 +54,15 @@ export class DailyEmotionService {
           familyId,
         })
         .where('date = :date', { date: today })
+        .orderBy('user.id', 'ASC')
         .getMany();
+
+      // 정렬 순서: 본인 1순위 -> 이후 userId 정렬
+      dailyEmotions.sort((a, b) => {
+        if (a.userId === userId) return -1;
+        else if (b.userId === userId) return 1;
+        else return a.userId - b.userId;
+      });
 
       return { result: true, dailyEmotions };
     } catch (e) {
@@ -62,11 +71,22 @@ export class DailyEmotionService {
   }
 
   async findFamilyEmotions(
-    { familyId }: AuthUserId,
+    { userId, familyId }: AuthUserId,
     { take, prevDate }: PaginationByDateReqDTO,
   ): Promise<DailyEmoByDateResDTO> {
-    const startDate = new Date(prevDate.getTime() - 1000 * 60 * 60 * 24 * take); // 검색 시작일
     const dailyEmotionsByDate: DailyEmoByDateDTO[] = [];
+    const dayInMilliSec = 1000 * 60 * 60 * 24;
+    /**
+     * .toLocaleDateString('ko-KR')
+     * choose emotion에서 ko-KR로 변환해서 입력하기 때문에
+     * prevDate를 한 번 더 한국 시간으로 변경하면 오류
+     * 즉, 전달받은 prevDate는 UTC가 아닌 한국 시간일 것을 가정
+     * 그럼에도 %연산으로 시간 부분 날려주는 것은 validation의 일환으로 진행
+     */
+    const endDate = new Date(
+      new Date(prevDate.getTime() - (prevDate.getTime() % dayInMilliSec)),
+    );
+    const startDate = new Date(endDate.getTime() - dayInMilliSec * take); // 검색 시작일
 
     try {
       const dailyEmotions = await this.dailyEmoRepository
@@ -75,7 +95,7 @@ export class DailyEmotionService {
         .innerJoinAndSelect('emo.user', 'user', 'user.familyId = :familyId', {
           familyId,
         })
-        .where('emo.date < :end', { end: prevDate })
+        .where('emo.date < :end', { end: endDate })
         .andWhere('emo.date >= :start', { start: startDate })
         .orderBy('emo.date', 'DESC')
         .getMany();
@@ -98,13 +118,21 @@ export class DailyEmotionService {
         }
       }
 
+      for (const dailyEmo of dailyEmotionsByDate) {
+        dailyEmo.dailyEmotions.sort((a, b) => {
+          if (a.userId === userId) return -1;
+          else if (b.userId === userId) return 1;
+          else a.userId - b.userId;
+        });
+      }
+
       return { result: true, dailyEmotionsByDate };
     } catch (e) {
       return { result: false, error: e.message };
     }
   }
 
-  async chooseDailyEmotion(
+  async chooseEmotion(
     { userId }: AuthUserId,
     { type }: ChooseDailyEmoReqDTO,
   ): Promise<BaseResponseDTO> {
@@ -131,7 +159,7 @@ export class DailyEmotionService {
     }
   }
 
-  async deleteDailyEmotion({ userId }: AuthUserId): Promise<BaseResponseDTO> {
+  async deleteEmotion({ userId }: AuthUserId): Promise<BaseResponseDTO> {
     const today = new Date(new Date().toLocaleDateString('ko-KR'));
 
     const queryRunner = this.dataSource.createQueryRunner();
@@ -174,8 +202,8 @@ export class DailyEmotionService {
         .createQueryBuilder('user')
         .select()
         .where('id = :targetId', { targetId })
-        .andWhere('family.id = :familyId', { familyId })
-        .andWhere('status = :status', { status: UserStatus.ACTIVE })
+        .andWhere('user.family.id = :familyId', { familyId })
+        .andWhere('user.status = :status', { status: UserStatus.ACTIVE })
         .getOneOrFail();
 
       // TODO: send notification
