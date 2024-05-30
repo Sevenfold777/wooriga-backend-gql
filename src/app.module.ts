@@ -38,6 +38,7 @@ import { LetterGuide } from './letter/entities/letter-guide.entity';
 import { FamilyPedia } from './family-pedia/entities/family-pedia.entity';
 import { FamilyPediaQuestion } from './family-pedia/entities/family-pedia-question';
 import { DailyEmotionModule } from './daily-emotion/daily-emotion.module';
+import { SqsNotificationModule } from './sqs-notification/sqs-notification.module';
 
 @Module({
   imports: [
@@ -94,6 +95,7 @@ import { DailyEmotionModule } from './daily-emotion/daily-emotion.module';
     PhotoModule,
     InquiryModule,
     DailyEmotionModule,
+    SqsNotificationModule,
   ],
   controllers: [AppController],
 })

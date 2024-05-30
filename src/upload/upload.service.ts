@@ -1,6 +1,6 @@
 import { Injectable, UploadedFiles } from '@nestjs/common';
 import { AuthService } from 'src/auth/auth.service';
-import * as AWS from 'aws-sdk';
+// import * as AWS from 'aws-sdk';
 import { BaseResponseDTO } from 'src/common/dto/base-res.dto';
 
 @Injectable()
@@ -13,12 +13,12 @@ export class UploadService {
     @UploadedFiles() files: Express.Multer.File[],
   ): Promise<string[]> {
     // configue AWS
-    AWS.config.update({
-      credentials: {
-        accessKeyId: process.env.AWS_ACCESS_KEY,
-        secretAccessKey: process.env.AWS_SECRET_KEY,
-      },
-    });
+    // AWS.config.update({
+    //   credentials: {
+    //     accessKeyId: process.env.AWS_ACCESS_KEY,
+    //     secretAccessKey: process.env.AWS_SECRET_KEY,
+    //   },
+    // });
 
     // upload to S3 Bucket
     try {
@@ -31,14 +31,14 @@ export class UploadService {
         });
         const objectName = `${dir}/${encryptedUserId}/${Date.now()}.jpeg`;
 
-        await new AWS.S3()
-          .putObject({
-            Body: file.buffer,
-            Bucket: process.env.S3_BUCKET_NAME,
-            Key: objectName,
-            ACL: 'public-read',
-          })
-          .promise();
+        // await new AWS.S3()
+        //   .putObject({
+        //     Body: file.buffer,
+        //     Bucket: process.env.S3_BUCKET_NAME,
+        //     Key: objectName,
+        //     ACL: 'public-read',
+        //   })
+        //   .promise();
 
         const url = `https://${process.env.S3_BUCKET_NAME}.s3.amazonaws.com/${objectName}`;
 
@@ -61,12 +61,12 @@ export class UploadService {
     const BUCKET_NAME = process.env.S3_BUCKET_NAME;
 
     // configure AWS
-    AWS.config.update({
-      credentials: {
-        accessKeyId: process.env.AWS_ACCESS_KEY,
-        secretAccessKey: process.env.AWS_SECRET_KEY,
-      },
-    });
+    // AWS.config.update({
+    //   credentials: {
+    //     accessKeyId: process.env.AWS_ACCESS_KEY,
+    //     secretAccessKey: process.env.AWS_SECRET_KEY,
+    //   },
+    // });
 
     try {
       const param = {
@@ -83,7 +83,7 @@ export class UploadService {
         param.Delete.Objects.push({ Key: key });
       });
 
-      await new AWS.S3().deleteObjects(param).promise();
+      // await new AWS.S3().deleteObjects(param).promise();
     } catch (e) {
       throw e;
     }
