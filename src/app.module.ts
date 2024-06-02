@@ -39,10 +39,13 @@ import { FamilyPedia } from './family-pedia/entities/family-pedia.entity';
 import { FamilyPediaQuestion } from './family-pedia/entities/family-pedia-question';
 import { DailyEmotionModule } from './daily-emotion/daily-emotion.module';
 import { SqsNotificationModule } from './sqs-notification/sqs-notification.module';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ envFilePath: '.env.dev.local' }),
+    EventEmitterModule.forRoot({ ignoreErrors: false }),
+    ScheduleModule.forRoot(),
     TypeOrmModule.forRoot({
       type: 'mysql',
       port: +process.env.DB_PORT,
@@ -81,7 +84,6 @@ import { SqsNotificationModule } from './sqs-notification/sqs-notification.modul
       path: '/api/v2/graphql',
       playground: true,
     }),
-    ScheduleModule.forRoot(),
     UserModule,
     AuthModule,
     UploadModule,

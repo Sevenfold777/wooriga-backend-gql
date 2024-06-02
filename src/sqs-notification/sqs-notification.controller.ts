@@ -11,6 +11,6 @@ export class SqsNotificationController {
   @Public()
   @Get()
   testSQS() {
-    return this.sqsNotificationService.receiveNotificationSQS();
+    return this.sqsNotificationService.receiveNotificationPayloadSQS();
   }
 }
