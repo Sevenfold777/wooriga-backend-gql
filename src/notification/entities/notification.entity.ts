@@ -30,6 +30,7 @@ export class Notification {
   @Field()
   body: string;
 
+  // TODO: enum
   @Column({ nullable: true })
   @Field({ nullable: true })
   screen?: string;
@@ -43,12 +44,6 @@ export class Notification {
   })
   @Field(() => User)
   receiver: User;
-
-  @ManyToOne(() => User, {
-    createForeignKeyConstraints: false,
-  })
-  @Field(() => User)
-  sender: User;
 }
 
 /** 알림은 30일간 보존 (mysql에 직접 쿼리 보내야)

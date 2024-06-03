@@ -18,20 +18,15 @@ export class CreateNotificationReqDTO {
   body: string;
 
   @IsOptional()
-  // @IsEnum()
+  @IsString() // temp
+  // @IsEnum() // TODO
   screen?: string;
 
   @IsOptional()
   @IsObject()
   param?: object;
 
-  @IsOptional()
   @IsNumber()
   @Min(1) // TODO: USER id 정책에 따라 범위 설정
-  receiverId?: number;
-
-  @IsOptional()
-  @IsNumber()
-  @Min(1) // TODO: USER id 정책에 따라 범위 설정
-  senderId?: number;
+  receiverId: number;
 }
