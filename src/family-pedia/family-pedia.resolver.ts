@@ -16,11 +16,7 @@ export class FamilyPediaResolver {
   constructor(private readonly familyPediaService: FamilyPediaService) {}
 
   /**
-   * TODO:
-   * edit profile
-   * => upload module에서 연계 구현
-   * (service는 family pedia module 것 사용)
-   * (REST API mutipart/form-data)
+   * TODO: edit profile photo
    */
 
   @Query(() => FamilyPediasResDTO)

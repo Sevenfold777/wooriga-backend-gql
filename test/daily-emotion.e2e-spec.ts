@@ -394,7 +394,7 @@ describe('Daily Emotion Module (e2e)', () => {
   });
 
   it('find family emotion past with pagination', async () => {
-    // 1. 가족의 감정 선택 생성
+    // 가족의 감정 선택 생성
     await dailyEmoRepository
       .createQueryBuilder('emo')
       .insert()
@@ -434,7 +434,6 @@ describe('Daily Emotion Module (e2e)', () => {
       .updateEntity(false)
       .execute();
 
-    // 2. TODO gql 검증
     const take = 2;
 
     const query = `

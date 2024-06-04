@@ -204,10 +204,6 @@ export class PhotoService {
     }
   }
 
-  /**
-   * create comment에서는 familiy validation 필요
-   * 우리 가족의 photo에만 댓글을 남길 수 있음
-   */
   async commentPhoto(
     { userId, familyId }: AuthUserId,
     { photoId, payload }: CreatePhotoCommentReqDTO,
@@ -302,13 +298,13 @@ export class PhotoService {
   async photoFamValidate(photoId: number, familyId: number): Promise<boolean> {
     const exist = await this.photoRepository
       .createQueryBuilder('photo')
-      .select()
+      .select('photo.id')
       .where('photo.id = :photoId', { photoId })
       .andWhere('photo.familyId = :familyId', {
         familyId,
       })
-      .getExists();
+      .getOne();
 
-    return exist;
+    return Boolean(exist);
   }
 }

@@ -25,7 +25,7 @@ export class FamilyPedia extends CoreEntity {
   @Field(() => User)
   owner: User;
 
-  @OneToMany(() => FamilyPediaQuestion, (row) => row.familyPedia)
+  @OneToMany(() => FamilyPediaQuestion, (question) => question.familyPedia)
   @Field(() => [FamilyPediaQuestion])
   questions: FamilyPediaQuestion[];
 }
