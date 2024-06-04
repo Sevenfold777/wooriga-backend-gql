@@ -12,11 +12,11 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 
 @Injectable()
 export class SqsNotificationService {
-  private clientSQS: SQSClient;
+  private client: SQSClient;
 
   constructor(private eventEmitter: EventEmitter2) {
     // init SQS client
-    this.clientSQS = new SQSClient({
+    this.client = new SQSClient({
       credentials: {
         accessKeyId: process.env.AWS_ACCESS_KEY,
         secretAccessKey: process.env.AWS_SECRET_KEY,
@@ -25,7 +25,7 @@ export class SqsNotificationService {
     });
   }
 
-  async sendNotificationSQS(body: SqsNotificationProduceDTO) {
+  async sendNotification(body: SqsNotificationProduceDTO) {
     try {
       const command = new SendMessageCommand({
         DelaySeconds: 0,
@@ -33,7 +33,7 @@ export class SqsNotificationService {
         MessageBody: JSON.stringify(body),
       });
 
-      await this.clientSQS.send(command);
+      await this.client.send(command);
     } catch (e) {
       console.error(e.message);
     }
@@ -44,7 +44,7 @@ export class SqsNotificationService {
    * Queue에 여러 개의 메세지가 있어도 한 개 또는 적은 수만 반환할 수 있음
    * !!!항상 JSON data를 Message Body로 받아야!!!
    */
-  async receiveNotificationPayloadSQS() {
+  async receiveNotificationPayload() {
     let messagesReceived: Message[];
 
     try {
@@ -57,7 +57,7 @@ export class SqsNotificationService {
         VisibilityTimeout: 20,
       });
 
-      const { Messages } = await this.clientSQS.send(command);
+      const { Messages } = await this.client.send(command);
       messagesReceived = Messages;
 
       if (!messagesReceived) {
@@ -70,27 +70,27 @@ export class SqsNotificationService {
         messagesReceived.map((message) => JSON.parse(message.Body)), // message body has to be JSON
       );
 
-      await this.clearConsumedMessagesSQS(messagesReceived);
+      await this.clearConsumedMessages(messagesReceived);
     } catch (e) {
       if (e instanceof SyntaxError) {
         // JSON parse를 비롯한 syntax error의 경우 queue에서 삭제 처리
-        await this.clearConsumedMessagesSQS(messagesReceived);
+        await this.clearConsumedMessages(messagesReceived);
       }
       console.error(messagesReceived, e.message);
     }
   }
 
   // clear queue after consume logic
-  private async clearConsumedMessagesSQS(messages: Message[]): Promise<void> {
+  private async clearConsumedMessages(messages: Message[]): Promise<void> {
     if (messages.length === 1) {
-      await this.clientSQS.send(
+      await this.client.send(
         new DeleteMessageCommand({
           QueueUrl: process.env.AWS_SQS_NOTIFICATION_STORE_URL,
           ReceiptHandle: messages[0].ReceiptHandle,
         }),
       );
     } else {
-      await this.clientSQS.send(
+      await this.client.send(
         new DeleteMessageBatchCommand({
           QueueUrl: process.env.AWS_SQS_NOTIFICATION_STORE_URL,
           Entries: messages.map((message) => ({

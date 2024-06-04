@@ -40,6 +40,7 @@ import { FamilyPediaQuestion } from './family-pedia/entities/family-pedia-questi
 import { DailyEmotionModule } from './daily-emotion/daily-emotion.module';
 import { SqsNotificationModule } from './sqs-notification/sqs-notification.module';
 import { EventEmitterModule } from '@nestjs/event-emitter';
+import { DynamoModule } from './dynamo/dynamo.module';
 
 @Module({
   imports: [
@@ -98,6 +99,7 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
     InquiryModule,
     DailyEmotionModule,
     SqsNotificationModule,
+    DynamoModule,
   ],
   controllers: [AppController],
 })

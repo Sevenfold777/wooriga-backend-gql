@@ -1,24 +1,39 @@
 import { ArgsType, Field } from '@nestjs/graphql';
-import { IsBoolean, IsEnum, IsNotEmpty, IsString } from 'class-validator';
+import {
+  IsBoolean,
+  IsEnum,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+} from 'class-validator';
 import { FamilyPosition } from '../constants/family-position.enum';
 
 @ArgsType()
 export class EditUserReqDTO {
-  @Field()
+  @Field({ nullable: true })
+  @IsOptional()
   @IsString()
   @IsNotEmpty()
-  userName: string;
+  userName?: string;
 
-  @Field()
+  @Field({ nullable: true })
+  @IsOptional()
   @IsString()
   @IsNotEmpty()
-  birthday: string;
+  birthday?: string;
 
-  @Field(() => Boolean)
+  @Field(() => Boolean, { nullable: true })
+  @IsOptional()
   @IsBoolean()
-  isBirthLunar: boolean;
+  isBirthLunar?: boolean;
 
-  @Field(() => FamilyPosition)
+  @Field(() => FamilyPosition, { nullable: true })
+  @IsOptional()
   @IsEnum(FamilyPosition)
-  position: FamilyPosition;
+  position?: FamilyPosition;
+
+  @Field(() => Boolean, { nullable: true })
+  @IsOptional()
+  @IsBoolean()
+  mktPushAgreed?: boolean;
 }
