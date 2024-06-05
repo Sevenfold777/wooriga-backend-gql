@@ -1,3 +1,4 @@
+import { DynamoUserService } from './../dynamo/dynamo-user.service';
 import { Injectable } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { CreateNotificationReqDTO } from './dto/create-notification-req.dto';
@@ -10,12 +11,17 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Notification } from './entities/notification.entity';
 import { Repository } from 'typeorm';
 import { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
+import { DynamoUser } from 'src/dynamo/entities/dynamo-user.entity';
+import { UserStatus } from 'src/user/constants/user-status.enum';
+import { User } from 'src/user/entities/user.entity';
+import { DynamoEditFamilyIdReqDTO } from 'src/dynamo/dto/dynamo-edit-familyId-req.dto';
 
 @Injectable()
 export class NotificationService {
   constructor(
     @InjectRepository(Notification)
     private notificationRepository: Repository<Notification>,
+    private readonly dynamoUserService: DynamoUserService,
   ) {}
 
   @OnEvent('sqs.notification.payload.received')
@@ -50,6 +56,30 @@ export class NotificationService {
     } catch (e) {
       console.error('ERROR ', e.message);
     }
+  }
+
+  @OnEvent('user.updated')
+  private async handleUserUpdate(user: User): Promise<void> {
+    // 에러 핸들링은 dynamoUserService에서 진행
+
+    const dynamoUser = new DynamoUser();
+    dynamoUser.id = user.id;
+    dynamoUser.userName = user.userName;
+    dynamoUser.familyId = user.familyId;
+    dynamoUser.mktPushAgreed = user.mktPushAgreed;
+    dynamoUser.fcmToken = user.fcmToken;
+    dynamoUser.status = UserStatus.ACTIVE;
+
+    return this.dynamoUserService.putItem(dynamoUser);
+  }
+
+  @OnEvent('family.joined')
+  private async handleFamilyJoined({
+    userId,
+    familyId,
+  }: DynamoEditFamilyIdReqDTO): Promise<void> {
+    // 에러 핸들링은 dynamoUserService에서 진행
+    return this.dynamoUserService.updateFamilyId({ userId, familyId });
   }
 
   async findNotifications(

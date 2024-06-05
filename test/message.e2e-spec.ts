@@ -37,7 +37,7 @@ describe('Message Module (e2e)', () => {
             error
             messageFam {
                 id
-                receiveDate
+                receivedAt
                 message {
                     id
                     payload
@@ -71,7 +71,7 @@ describe('Message Module (e2e)', () => {
         expect(messageFam.isKept).not.toBeNull();
         expect(messageFam.message.payload).not.toBeNull();
         expect(messageFam.message.emotion).not.toBeNull();
-        expect(messageFam.receiveDate).not.toBeNull();
+        expect(messageFam.receivedAt).not.toBeNull();
       });
   });
 
@@ -83,7 +83,7 @@ describe('Message Module (e2e)', () => {
             error
             messageFam {
                 id
-                receiveDate
+                receivedAt
                 message {
                     id
                     payload
@@ -115,7 +115,7 @@ describe('Message Module (e2e)', () => {
         expect(messageFam.isKept).not.toBeNull();
         expect(messageFam.message.payload).not.toBeNull();
         expect(messageFam.message.emotion).not.toBeNull();
-        expect(messageFam.receiveDate).not.toBeNull();
+        expect(messageFam.receivedAt).not.toBeNull();
       });
   });
 
@@ -130,7 +130,7 @@ describe('Message Module (e2e)', () => {
             error
             messageFams {
                 id
-                receiveDate
+                receivedAt
                 message {
                     id
                     payload
@@ -163,7 +163,7 @@ describe('Message Module (e2e)', () => {
         expect(messageFams[0].familyId).toBe(TEST_FAMILY_ID);
         expect(messageFams[0].message.payload).not.toBeNull();
         expect(messageFams[0].message.emotion).not.toBeNull();
-        expect(messageFams[0].receiveDate).not.toBeNull();
+        expect(messageFams[0].receivedAt).not.toBeNull();
       });
   });
 
@@ -206,7 +206,7 @@ describe('Message Module (e2e)', () => {
             error
             messageFams {
                 id
-                receiveDate
+                receivedAt
                 message {
                     id
                     payload
@@ -241,7 +241,7 @@ describe('Message Module (e2e)', () => {
         expect(messageFams[0].message.payload).not.toBeNull();
         expect(messageFams[0].message.emotion).not.toBeNull();
         expect(messageFams[0].isKept).toBe(true);
-        expect(messageFams[0].receiveDate).not.toBeNull();
+        expect(messageFams[0].receivedAt).not.toBeNull();
       });
   });
 

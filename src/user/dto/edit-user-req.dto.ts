@@ -36,4 +36,8 @@ export class EditUserReqDTO {
   @IsOptional()
   @IsBoolean()
   mktPushAgreed?: boolean;
+
+  @Field({ nullable: true })
+  @IsOptional()
+  fcmToken?: string;
 }

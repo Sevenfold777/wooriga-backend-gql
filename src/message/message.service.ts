@@ -45,8 +45,8 @@ export class MessageService {
         .leftJoin('msgFam.keeps', 'keep', 'keep.user.id = :userId', { userId }) // to count
         .leftJoin('msgFam.comments', 'comment') // to count
         .where('msgFam.family.id = :familyId', { familyId })
-        .andWhere('receivedAt <= :now', { now: new Date() })
-        .orderBy('receivedAt', 'DESC')
+        .andWhere('msgFam.receivedAt <= :now', { now: new Date() })
+        .orderBy('msgFam.receivedAt', 'DESC')
         .getOneOrFail();
 
       message.isKept = Boolean(message.keeps.length);
@@ -73,7 +73,7 @@ export class MessageService {
         .leftJoin('msgFam.comments', 'comment') // to count
         .where('msgFam.id = :messageFamId', { messageFamId })
         .andWhere('msgFam.family.id = :familyId', { familyId })
-        .andWhere('receivedAt <= :now', { now: new Date() })
+        .andWhere('msgFam.receivedAt <= :now', { now: new Date() })
         .getOneOrFail();
 
       message.isKept = Boolean(message.keeps.length);
@@ -94,9 +94,9 @@ export class MessageService {
         .createQueryBuilder('msgFam')
         .select()
         .innerJoinAndSelect('msgFam.message', 'message')
-        .where('receivedAt <= :now', { now: new Date() })
+        .where('msgFam.receivedAt <= :now', { now: new Date() })
         .andWhere('msgFam.family.id = :familyId', { familyId })
-        .orderBy('receivedAt', 'DESC')
+        .orderBy('msgFam.receivedAt', 'DESC')
         .offset(take * prev)
         .limit(take)
         .getMany();
@@ -119,13 +119,13 @@ export class MessageService {
         .select()
         .innerJoinAndSelect(
           'keep.message',
-          'messageFam',
-          'messageFam.family.id = :familyId',
+          'msgFam',
+          'msgFam.family.id = :familyId',
           { familyId },
         )
-        .innerJoinAndSelect('messageFam.message', 'message')
+        .innerJoinAndSelect('msgFam.message', 'message')
         .where('keep.user.id = :userId', { userId })
-        .orderBy('receivedAt', 'DESC')
+        .orderBy('msgFam.receivedAt', 'DESC')
         .limit(take)
         .offset(take * prev)
         .getMany();

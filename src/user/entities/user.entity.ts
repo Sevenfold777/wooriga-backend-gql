@@ -20,6 +20,10 @@ export class User extends CoreEntity {
 
   @Column()
   @Field()
+  fcmToken: string;
+
+  @Column()
+  @Field()
   userName: string;
 
   @Column({ type: 'enum', enum: FamilyPosition })

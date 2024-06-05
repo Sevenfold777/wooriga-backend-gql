@@ -28,11 +28,11 @@ export class UserResolver {
     return this.userService.signUp(signUpReqDTO);
   }
 
-  @Mutation(() => BaseResponseDTO)
+  @Mutation(() => UserResDTO)
   editUser(
     @AuthUser() user: AuthUserId,
     @Args() editUserReqDTO: EditUserReqDTO,
-  ): Promise<BaseResponseDTO> {
+  ): Promise<UserResDTO> {
     return this.userService.editUser(user, editUserReqDTO);
   }
 

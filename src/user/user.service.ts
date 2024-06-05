@@ -18,6 +18,7 @@ import { AuthProvider } from './constants/auth-provider.enum';
 import { FamilyService } from 'src/family/family.service';
 import { SignInRejectType } from './constants/sign-in-reject-type.enum';
 import { FamilyPediaService } from 'src/family-pedia/family-pedia.service';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 
 @Injectable()
 export class UserService {
@@ -29,6 +30,7 @@ export class UserService {
     @InjectRepository(User) private userRepository: Repository<User>,
     @InjectRepository(UserAuth)
     private userAuthRepository: Repository<UserAuth>,
+    private eventEmitter: EventEmitter2,
   ) {}
 
   async findMyProfile({ userId }: AuthUserId): Promise<UserResDTO> {
@@ -159,34 +161,44 @@ export class UserService {
     }
   }
 
-  /**
-   * REST API의 PUT처럼 req body에 들어 오는 것으로 전부 교체
-   */
   async editUser(
     { userId }: AuthUserId,
-    { userName, birthday, isBirthLunar, position }: EditUserReqDTO,
-  ): Promise<BaseResponseDTO> {
+    editUserReqDTO: EditUserReqDTO,
+  ): Promise<UserResDTO> {
     try {
-      const birthdayStr = `${birthday.slice(0, 4)}-${birthday.slice(4, 6)}-${birthday.slice(6)}`;
+      const { birthday } = editUserReqDTO;
+
+      let birthdayStr: string;
+
+      if (birthday) {
+        birthdayStr = `${birthday.slice(0, 4)}-${birthday.slice(4, 6)}-${birthday.slice(6)}`;
+      }
 
       const updateResult = await this.userRepository
         .createQueryBuilder('user')
         .update()
         .where('id = :userId', { userId })
         .set({
-          userName,
-          position,
-          isBirthLunar,
-          birthday: new Date(birthdayStr),
+          ...editUserReqDTO,
+          ...(birthday && { birthday: new Date(birthdayStr) }),
         })
-        .updateEntity(false)
+        .updateEntity(true)
         .execute();
 
       if (updateResult?.affected !== 1) {
         throw new Error('Cannot update the user with request body.');
       }
 
-      return { result: true };
+      const userUpdated = await this.userRepository
+        .createQueryBuilder('user')
+        .select()
+        .where('user.id = :userId', { userId })
+        .getOneOrFail();
+
+      // TODO: fire user.updated event
+      this.eventEmitter.emit('user.updated', userUpdated);
+
+      return { result: true, user: userUpdated };
     } catch (e) {
       return { result: false, error: e.message };
     }

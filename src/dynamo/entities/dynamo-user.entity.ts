@@ -1,6 +1,5 @@
 import {
   IsBoolean,
-  IsEmail,
   IsEnum,
   IsNotEmpty,
   IsNumber,
@@ -13,9 +12,6 @@ export class DynamoUser {
   @IsNumber()
   @Min(0) // TODO: id 범위 정책에 따라 범위 제한
   id: number;
-
-  @IsEmail()
-  email: string;
 
   @IsNotEmpty()
   @IsString()

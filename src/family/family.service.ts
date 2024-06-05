@@ -10,6 +10,7 @@ import { MessageFamily } from 'src/message/entities/message-family.entity';
 import { User } from 'src/user/entities/user.entity';
 import { FamilyResDTO } from './dto/family-res.dto';
 import { CreateResDTO } from 'src/common/dto/create-res.dto';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 
 @Injectable()
 export class FamilyService {
@@ -20,6 +21,7 @@ export class FamilyService {
     @InjectRepository(User) private userRepository: Repository<User>,
     @InjectRepository(MessageFamily)
     private messageRepository: Repository<MessageFamily>,
+    private eventEmitter: EventEmitter2,
   ) {}
 
   async createFamily(): Promise<CreateResDTO> {
@@ -149,6 +151,13 @@ export class FamilyService {
 
       //   await queryRunner.rollbackTransaction(); // for test
       await queryRunner.commitTransaction();
+
+      // TODO: fire user.updated event
+      this.eventEmitter.emit('family.joined', {
+        userId,
+        familyId: familyToJoin,
+      });
+
       return { result: true };
     } catch (e) {
       await queryRunner.rollbackTransaction();
