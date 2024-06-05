@@ -47,7 +47,7 @@ export class FamilyService {
         .values({
           family: { id: familyId },
           message: { id: parseInt(process.env.DEFAULT_MESSAGE_ID) },
-          receiveDate: new Date(),
+          receivedAt: new Date(),
         })
         .updateEntity(false)
         .execute();

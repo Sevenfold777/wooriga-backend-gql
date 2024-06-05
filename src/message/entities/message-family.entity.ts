@@ -15,9 +15,9 @@ export class MessageFamily extends CoreEntity {
    * 따라서 composite key 고려하지 않음
    */
 
-  @Column()
+  @Column({ name: 'receiveDate' })
   @Field(() => Date)
-  receiveDate: Date;
+  receivedAt: Date;
 
   @ManyToOne(() => Message, { onDelete: 'CASCADE' })
   @Field(() => Message)
@@ -27,7 +27,10 @@ export class MessageFamily extends CoreEntity {
   @Field(() => Int)
   familyId: number;
 
-  @ManyToOne(() => Family, { onDelete: 'CASCADE', onUpdate: 'CASCADE' })
+  @ManyToOne(() => Family, (family) => family.messages, {
+    onDelete: 'CASCADE',
+    onUpdate: 'CASCADE',
+  })
   @Field(() => Family)
   family: Family;
 

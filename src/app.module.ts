@@ -41,6 +41,9 @@ import { DailyEmotionModule } from './daily-emotion/daily-emotion.module';
 import { SqsNotificationModule } from './sqs-notification/sqs-notification.module';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { DynamoModule } from './dynamo/dynamo.module';
+import { SchedulerModule } from './scheduler/scheduler.module';
+import { DAU } from './admin/entities/dau.entity';
+import { MAU } from './admin/entities/mau.entity';
 
 @Module({
   imports: [
@@ -74,6 +77,8 @@ import { DynamoModule } from './dynamo/dynamo.module';
         LetterGuide,
         FamilyPedia,
         FamilyPediaQuestion,
+        DAU,
+        MAU,
       ],
       synchronize: false,
       logging: true,
@@ -100,6 +105,7 @@ import { DynamoModule } from './dynamo/dynamo.module';
     DailyEmotionModule,
     SqsNotificationModule,
     DynamoModule,
+    SchedulerModule,
   ],
   controllers: [AppController],
 })

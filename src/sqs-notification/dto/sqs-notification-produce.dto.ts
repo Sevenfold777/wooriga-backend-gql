@@ -12,9 +12,10 @@ export class SqsNotificationProduceDTO {
   @IsEnum(NotificationType)
   type: NotificationType;
 
+  @IsOptional()
   @IsNumber()
   @Min(1) // TODO set minimum familyId
-  familyId: number;
+  familyId?: number;
 
   @IsOptional()
   @IsNumber()

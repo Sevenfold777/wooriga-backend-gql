@@ -45,8 +45,8 @@ export class MessageService {
         .leftJoin('msgFam.keeps', 'keep', 'keep.user.id = :userId', { userId }) // to count
         .leftJoin('msgFam.comments', 'comment') // to count
         .where('msgFam.family.id = :familyId', { familyId })
-        .andWhere('receiveDate <= :now', { now: new Date() })
-        .orderBy('receiveDate', 'DESC')
+        .andWhere('receivedAt <= :now', { now: new Date() })
+        .orderBy('receivedAt', 'DESC')
         .getOneOrFail();
 
       message.isKept = Boolean(message.keeps.length);
@@ -73,7 +73,7 @@ export class MessageService {
         .leftJoin('msgFam.comments', 'comment') // to count
         .where('msgFam.id = :messageFamId', { messageFamId })
         .andWhere('msgFam.family.id = :familyId', { familyId })
-        .andWhere('receiveDate <= :now', { now: new Date() })
+        .andWhere('receivedAt <= :now', { now: new Date() })
         .getOneOrFail();
 
       message.isKept = Boolean(message.keeps.length);
@@ -94,9 +94,9 @@ export class MessageService {
         .createQueryBuilder('msgFam')
         .select()
         .innerJoinAndSelect('msgFam.message', 'message')
-        .where('receiveDate <= :now', { now: new Date() })
+        .where('receivedAt <= :now', { now: new Date() })
         .andWhere('msgFam.family.id = :familyId', { familyId })
-        .orderBy('receiveDate', 'DESC')
+        .orderBy('receivedAt', 'DESC')
         .offset(take * prev)
         .limit(take)
         .getMany();
@@ -125,7 +125,7 @@ export class MessageService {
         )
         .innerJoinAndSelect('messageFam.message', 'message')
         .where('keep.user.id = :userId', { userId })
-        .orderBy('receiveDate', 'DESC')
+        .orderBy('receivedAt', 'DESC')
         .limit(take)
         .offset(take * prev)
         .getMany();
