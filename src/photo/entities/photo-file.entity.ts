@@ -18,6 +18,10 @@ export class PhotoFile extends CoreEntity {
   @Field(() => Int)
   height: number;
 
+  @Column()
+  @Field(() => Int)
+  photoId: number;
+
   @ManyToOne(() => Photo, (photo) => photo.files, { onDelete: 'CASCADE' })
   @Field(() => Photo)
   photo: Photo;

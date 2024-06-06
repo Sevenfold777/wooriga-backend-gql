@@ -27,6 +27,10 @@ export class CommentEntity {
   @Field(() => User)
   author: User;
 
+  @Column()
+  @Field(() => Int)
+  authorId: number;
+
   @Column({ default: CommentStatus.ACTIVE })
   @Field(() => CommentStatus)
   status: CommentStatus;

@@ -16,6 +16,9 @@ import { AuthUserId } from 'src/auth/constants/auth-user-id.type';
 import { CreateResDTO } from 'src/common/dto/create-res.dto';
 import { CreatePhotoCommentReqDTO } from './dto/create-photo-comment-req.dto';
 import { CommentStatus } from 'src/common/constants/comment-status.enum';
+import { PhotoFileMetaDataDTO } from './dto/photo-file-metadata.dto';
+import * as DataLoader from 'dataloader';
+import { PhotoCommentMetaDataDTO } from './dto/photo-comment-metadata.dto';
 
 @Injectable()
 export class PhotoService {
@@ -40,9 +43,9 @@ export class PhotoService {
         .createQueryBuilder('photo')
         .delete()
         .from(Photo)
-        .where('photo.id = :id', { id })
-        .andWhere('photo.author.id = :userId', { userId })
-        .andWhere('photo.family.id = :familyId', { familyId })
+        .where('id = :id', { id })
+        .andWhere('author.id = :userId', { userId })
+        .andWhere('family.id = :familyId', { familyId })
         .execute();
 
       // photo file은 onDelete Cascade 적용됨
@@ -70,9 +73,9 @@ export class PhotoService {
       const updateResult = await this.photoRepository
         .createQueryBuilder('photo')
         .update()
-        .where('photo.id = :id', { id })
-        .andWhere('photo.user.id = :userId', { userId })
-        .andWhere('photo.family.id = :familyId', { familyId })
+        .where('id = :id', { id })
+        .andWhere('author.id = :userId', { userId })
+        .andWhere('family.id = :familyId', { familyId })
         .set({ title, payload })
         .updateEntity(false)
         .execute();
@@ -95,23 +98,13 @@ export class PhotoService {
       const photos = await this.photoRepository
         .createQueryBuilder('photo')
         .select()
-        .addSelect('file.url')
-        .innerJoinAndSelect(
-          'photo.author',
-          'author',
-          'author.famiyId = :familyId',
-          { familyId },
-        )
-        .innerJoinAndSelect('photo.files', 'file')
+        .innerJoinAndSelect('photo.author', 'author')
+        .where('photo.familyId = :familyId', { familyId })
         .orderBy('photo.createdAt', 'DESC')
+        .addOrderBy('photo.id', 'DESC')
         .offset(prev * take)
         .limit(take)
         .getMany();
-
-      photos.forEach((photo) => {
-        photo.filesCount = photo.files.length;
-        photo.thumbnailUrl = photo.files[0].url;
-      });
 
       return { result: true, photos };
     } catch (e) {
@@ -124,26 +117,20 @@ export class PhotoService {
     id: number,
   ): Promise<PhotoResDTO> {
     try {
-      // TODO: join 너무 많아 + comment도 내부적으로 join이 한 번 더 필요
-
       const photo = await this.photoRepository
         .createQueryBuilder('photo')
         .select()
         .addSelect('like.id')
-        .addSelect('comment.id')
         .innerJoinAndSelect('photo.author', 'author')
         .innerJoinAndSelect('photo.files', 'file')
-        .leftJoin('photo.comments', 'comment')
         .leftJoin('photo.likes', 'like', 'like.user.id = :userId', { userId })
         .where('photo.id = :id', { id })
         .andWhere('photo.family.id = :familyId', { familyId })
         .getOneOrFail();
 
       photo.isLiked = Boolean(photo.likes.length);
-      photo.commentsCount = photo.comments.length;
-      photo.filesCount = photo.files.length;
 
-      return { result: true };
+      return { result: true, photo };
     } catch (e) {
       return { result: false, error: e.message };
     }
@@ -154,17 +141,20 @@ export class PhotoService {
     photoId: number,
   ): Promise<BaseResponseDTO> {
     try {
+      const photoExist = await this.photoFamValidate(photoId, familyId);
+
+      if (!photoExist) {
+        throw new Error('Cannot like the corresponding photo.');
+      }
+
       const likeExist = await this.likeRepository
         .createQueryBuilder('like')
-        .select()
-        .innerJoin('like.photo', 'photo', 'photo.familyId = :familyId', {
-          familyId,
-        }) // this.photoFamValdiate 쿼리문 통합
+        .select('like.id')
         .where('like.photo.id = :photoId', { photoId })
         .andWhere('like.user.id = :userId', { userId })
-        .getExists();
+        .getOne();
 
-      if (likeExist) {
+      if (Boolean(likeExist)) {
         throw new Error('Already liked the photo.');
       }
 
@@ -191,13 +181,14 @@ export class PhotoService {
         .createQueryBuilder('like')
         .delete()
         .from(PhotoLike)
-        .where('like.user.id = :userId', { userId })
-        .andWhere('like.photo.id = :photoId', { photoId })
+        .where('user.id = :userId', { userId })
+        .andWhere('photo.id = :photoId', { photoId })
         .execute();
 
       if (deleteResult.affected !== 1) {
         throw new Error('Cannot delete the like.');
       }
+
       return { result: true };
     } catch (e) {
       return { result: false, error: e.message };
@@ -245,9 +236,9 @@ export class PhotoService {
       const updateResult = await this.commentRepository
         .createQueryBuilder('comment')
         .update()
-        .where('comment.id = :id', { id })
-        .andWhere('comment.author.id = :userId', { userId })
-        .andWhere('comment.status = :status', { status: CommentStatus.ACTIVE })
+        .where('id = :id', { id })
+        .andWhere('author.id = :userId', { userId })
+        .andWhere('status = :status', { status: CommentStatus.ACTIVE })
         .set({ status: CommentStatus.DELETED })
         .execute();
 
@@ -271,15 +262,16 @@ export class PhotoService {
       const photoExist = await this.photoFamValidate(photoId, familyId);
 
       if (!photoExist) {
-        throw new Error('Cannot find the photo.');
+        throw new Error('Cannot access the photo.');
       }
 
       const comments = await this.commentRepository
         .createQueryBuilder('comment')
         .select()
-        .leftJoinAndSelect('comment.author', 'author')
+        .innerJoinAndSelect('comment.author', 'author')
         .where('comment.photo.id = :photoId', { photoId })
-        .orderBy('createdAt', 'DESC')
+        .andWhere('comment.status = :status', { status: CommentStatus.ACTIVE })
+        .orderBy('comment.id', 'DESC')
         .offset(take * prev)
         .limit(take)
         .getMany();
@@ -289,6 +281,107 @@ export class PhotoService {
       return { result: false, error: e.message };
     }
   }
+
+  /**
+   * ResolveField 호출 (findPhotos 필요에 의해 작성)
+   * @param photo fileMetadata를 찾을 대상 photo
+   * @returns photo와 연관된 file들에 대한 메타데이터 반환 {thumbnailUrl: string, filesCount: number}
+   */
+  async getFileMetaData(photo: Photo): Promise<PhotoFileMetaDataDTO> {
+    try {
+      // DataLoder Batch load 적용
+      const files = await this.batchPhotoFileLoader.load(photo.id);
+
+      const thumbnailUrl = files[0].url;
+      const filesCount = files.length;
+
+      return { thumbnailUrl, filesCount };
+    } catch (e) {
+      // metadata를 얻을 수 없다고 해서 전체 findPhotos가 동작 실패하지는 않도록 에러 핸들링
+      // TODO: front 단에서도, metadata 구하는 중 에러 발생시 metadata 각 필드에 null 들어갈 수 있다는 것 알아야
+      console.error(e.message);
+      return { thumbnailUrl: null, filesCount: null };
+    }
+  }
+
+  // repository 분리했다면, Service 바깥으로 빼는 것이 이상적일 듯
+  private batchPhotoFileLoader = new DataLoader<number, PhotoFile[]>(
+    async (photoIds: readonly number[]) => {
+      const files = await this.fileRespository
+        .createQueryBuilder('file')
+        .select('file.url')
+        .addSelect('file.photoId')
+        .where('file.photoId IN (:...photoIds)', { photoIds })
+        .orderBy('file.id', 'ASC')
+        .getMany();
+
+      const fileMap: { [key: number]: PhotoFile[] } = {};
+
+      files.forEach((file) => {
+        if (fileMap[file.photoId]) {
+          fileMap[file.photoId].push(file);
+        } else {
+          fileMap[file.photoId] = [file];
+        }
+      });
+
+      return photoIds.map((photoId) => fileMap[photoId]);
+    },
+    { cache: false },
+  );
+
+  /**
+   * ResolveField 호출 (findPhoto 필요성에 의해 작성)
+   * @param photo CommentMetadata를 찾을 대상 photo
+   * @returns photo와 연관된 comment들에 대한 메타데이터 반환 {commentsCount: number, commentsPreview: Comment[]}
+   */
+  async getCommentMetaData(photo: Photo): Promise<PhotoCommentMetaDataDTO> {
+    try {
+      const res: PhotoCommentMetaDataDTO = {
+        commentsCount: 0,
+        commentsPreview: [],
+      };
+
+      const comment = await this.batchPhotoCommentLoader.load(photo.id);
+
+      if (comment) {
+        res.commentsCount = comment.length;
+        res.commentsPreview = comment.slice(0, 3);
+      }
+
+      return res;
+    } catch (e) {
+      console.error(e.message);
+      return { commentsCount: null, commentsPreview: null };
+    }
+  }
+
+  // 당장은 필요 없지만 api 사용자인 front-end가 필요에 따라 편리하고 유연하게 사용할 수 있도록 하기 위해 구현
+  private batchPhotoCommentLoader = new DataLoader<number, PhotoComment[]>(
+    async (photoIds: readonly number[]) => {
+      const comments = await this.commentRepository
+        .createQueryBuilder('comment')
+        .select()
+        .innerJoinAndSelect('comment.author', 'author')
+        .where('comment.photoId IN (:...photoIds)', { photoIds })
+        .andWhere('comment.status = :status', { status: CommentStatus.ACTIVE })
+        .orderBy('comment.id', 'DESC')
+        .getMany();
+
+      const commentMap: { [key: number]: PhotoComment[] } = {};
+
+      comments.forEach((comment) => {
+        if (commentMap[comment.photoId]) {
+          commentMap[comment.photoId].push(comment);
+        } else {
+          commentMap[comment.photoId] = [comment];
+        }
+      });
+
+      return photoIds.map((photoId) => commentMap[photoId]);
+    },
+    { cache: false },
+  );
 
   /**
    * PhotoId와 FamilyId를 입력 받아, 해당 Photo가 해당 Family의 소유인지 확인

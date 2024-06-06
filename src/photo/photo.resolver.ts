@@ -1,4 +1,12 @@
-import { Args, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
+import {
+  Args,
+  Int,
+  Mutation,
+  Parent,
+  Query,
+  ResolveField,
+  Resolver,
+} from '@nestjs/graphql';
 import { PhotoService } from './photo.service';
 import { AuthUser } from 'src/auth/decorators/auth-user.decorator';
 import { AuthUserId } from 'src/auth/constants/auth-user-id.type';
@@ -10,8 +18,12 @@ import { PhotoResDTO } from './dto/photo-res.dto';
 import { PhotoCommentsResDTO } from './dto/photo-comments-res.dto';
 import { PaginationReqDTO } from 'src/common/dto/pagination-req.dto';
 import { CreatePhotoCommentReqDTO } from './dto/create-photo-comment-req.dto';
+import { Photo } from './entities/photo.entity';
+import { PhotoFileMetaDataDTO } from './dto/photo-file-metadata.dto';
+import { PhotoCommentMetaDataDTO } from './dto/photo-comment-metadata.dto';
+import { CreateResDTO } from 'src/common/dto/create-res.dto';
 
-@Resolver()
+@Resolver(() => Photo)
 export class PhotoResolver {
   constructor(private readonly photoService: PhotoService) {}
 
@@ -80,11 +92,11 @@ export class PhotoResolver {
     return this.photoService.unlikePhoto(user, photoId);
   }
 
-  @Mutation(() => BaseResponseDTO)
+  @Mutation(() => CreateResDTO)
   commentPhoto(
     @AuthUser() user: AuthUserId,
     @Args() createCommentReqDTO: CreatePhotoCommentReqDTO,
-  ): Promise<BaseResponseDTO> {
+  ): Promise<CreateResDTO> {
     return this.photoService.commentPhoto(user, createCommentReqDTO);
   }
 
@@ -102,5 +114,15 @@ export class PhotoResolver {
     @Args() photoCommentReqDTO: PhotoCommentReqDTO,
   ): Promise<PhotoCommentsResDTO> {
     return this.photoService.findPhotoComments(user, photoCommentReqDTO);
+  }
+
+  @ResolveField(() => PhotoFileMetaDataDTO, { name: 'fileMetaData' })
+  getFileMetaData(@Parent() photo: Photo): Promise<PhotoFileMetaDataDTO> {
+    return this.photoService.getFileMetaData(photo);
+  }
+
+  @ResolveField(() => PhotoCommentMetaDataDTO, { name: 'commentMetaData' })
+  getCommentMetaData(@Parent() photo: Photo): Promise<PhotoCommentMetaDataDTO> {
+    return this.photoService.getCommentMetaData(photo);
   }
 }
