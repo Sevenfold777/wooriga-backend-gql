@@ -9,6 +9,7 @@ import {
 } from '@aws-sdk/client-sqs';
 import { SqsNotificationProduceDTO } from './dto/sqs-notification-produce.dto';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { NotificationType } from './constants/notification-type';
 
 @Injectable()
 export class SqsNotificationService {
@@ -25,7 +26,7 @@ export class SqsNotificationService {
     });
   }
 
-  async sendNotification(body: SqsNotificationProduceDTO) {
+  async sendNotification(body: SqsNotificationProduceDTO<NotificationType>) {
     try {
       const command = new SendMessageCommand({
         DelaySeconds: 0,

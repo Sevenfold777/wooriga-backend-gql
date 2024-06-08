@@ -1,3 +1,4 @@
+import { SqsNotificationService } from './../sqs-notification/sqs-notification.service';
 import { Injectable } from '@nestjs/common';
 import { AuthUserId } from 'src/auth/constants/auth-user-id.type';
 import { FamilyPedia } from './entities/family-pedia.entity';
@@ -12,6 +13,8 @@ import { FamilyPediasResDTO } from './dto/family-pedias-res.dto';
 import { FamilyPediaResDTO } from './dto/family-pedia-res.dto';
 import { CreateResDTO } from 'src/common/dto/create-res.dto';
 import { CreateFamilyPediaReqDTO } from './dto/create-family-pedia-req.dto';
+import { SqsNotificationProduceDTO } from 'src/sqs-notification/dto/sqs-notification-produce.dto';
+import { NotificationType } from 'src/sqs-notification/constants/notification-type';
 
 @Injectable()
 export class FamilyPediaService {
@@ -22,6 +25,7 @@ export class FamilyPediaService {
     private questionRepository: Repository<FamilyPediaQuestion>,
     // @InjectRepository(User)
     // private userRepository: Repository<User>,
+    private readonly sqsNotificationService: SqsNotificationService,
   ) {}
 
   async createFamilyPedia({
@@ -143,6 +147,14 @@ export class FamilyPediaService {
 
       const questionId = insertResult.raw.insertId;
 
+      // 알림
+      const sqsDTO = new SqsNotificationProduceDTO(
+        NotificationType.PEDIA_QUESTION_CREATED,
+        { ownerId: pediaId },
+      );
+
+      this.sqsNotificationService.sendNotification(sqsDTO);
+
       return { result: true, id: questionId };
     } catch (e) {
       return { result: false, error: e.message };
@@ -177,6 +189,14 @@ export class FamilyPediaService {
       if (updateResult.affected !== 1) {
         throw new Error('Cannot modify the question.');
       }
+
+      // 알림
+      const sqsDTO = new SqsNotificationProduceDTO(
+        NotificationType.PEDIA_QUESTION_EDITTED,
+        { ownerId: pediaId },
+      );
+
+      this.sqsNotificationService.sendNotification(sqsDTO);
 
       return { result: true };
     } catch (e) {
@@ -234,7 +254,7 @@ export class FamilyPediaService {
   }
 
   async answerQuestion(
-    { userId }: AuthUserId,
+    { userId, familyId }: AuthUserId,
     { id, answer, pediaId }: AnswerQuestionReqDTO,
   ): Promise<BaseResponseDTO> {
     try {
@@ -266,6 +286,14 @@ export class FamilyPediaService {
       if (updateResult.affected !== 1) {
         throw new Error('Cannot answer the question.');
       }
+
+      // 알림
+      const sqsDTO = new SqsNotificationProduceDTO(
+        NotificationType.PEDIA_ANSWER,
+        { familyId },
+      );
+
+      this.sqsNotificationService.sendNotification(sqsDTO);
 
       return { result: true };
     } catch (e) {

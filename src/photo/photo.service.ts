@@ -1,3 +1,4 @@
+import { SqsNotificationService } from './../sqs-notification/sqs-notification.service';
 import { Injectable } from '@nestjs/common';
 import { BaseResponseDTO } from 'src/common/dto/base-res.dto';
 import { PaginationReqDTO } from 'src/common/dto/pagination-req.dto';
@@ -19,6 +20,8 @@ import { CommentStatus } from 'src/common/constants/comment-status.enum';
 import { PhotoFileMetaDataDTO } from './dto/photo-file-metadata.dto';
 import * as DataLoader from 'dataloader';
 import { PhotoCommentMetaDataDTO } from './dto/photo-comment-metadata.dto';
+import { SqsNotificationProduceDTO } from 'src/sqs-notification/dto/sqs-notification-produce.dto';
+import { NotificationType } from 'src/sqs-notification/constants/notification-type';
 
 @Injectable()
 export class PhotoService {
@@ -29,6 +32,7 @@ export class PhotoService {
     @InjectRepository(PhotoLike) private likeRepository: Repository<PhotoLike>,
     @InjectRepository(PhotoComment)
     private commentRepository: Repository<PhotoComment>,
+    private readonly sqsNotificationService: SqsNotificationService,
   ) {}
 
   async deletePhoto(
@@ -216,7 +220,13 @@ export class PhotoService {
 
       const commentId = insertResult.raw?.insertId;
 
-      // TODO: notification
+      // 알림: notification
+      const sqsDTO = new SqsNotificationProduceDTO(
+        NotificationType.COMMENT_PHOTO,
+        { photoId, familyId },
+      );
+
+      this.sqsNotificationService.sendNotification(sqsDTO);
 
       return { result: true, id: commentId };
     } catch (e) {

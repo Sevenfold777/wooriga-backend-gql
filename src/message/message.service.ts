@@ -1,3 +1,4 @@
+import { SqsNotificationService } from './../sqs-notification/sqs-notification.service';
 import { Injectable } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { MessageComment } from './entities/message-comment.entity';
@@ -14,6 +15,8 @@ import { CommentStatus } from 'src/common/constants/comment-status.enum';
 import { AuthUserId } from 'src/auth/constants/auth-user-id.type';
 import { MsgsResDTO } from './dto/messages-res.dto';
 import { CreateResDTO } from 'src/common/dto/create-res.dto';
+import { SqsNotificationProduceDTO } from 'src/sqs-notification/dto/sqs-notification-produce.dto';
+import { NotificationType } from 'src/sqs-notification/constants/notification-type';
 
 @Injectable()
 export class MessageService {
@@ -25,6 +28,7 @@ export class MessageService {
     private commentRepository: Repository<MessageComment>,
     @InjectRepository(MessageKeep)
     private keepRepository: Repository<MessageKeep>,
+    private readonly sqsNotificationService: SqsNotificationService,
   ) {}
 
   async findMsgLatest({ userId, familyId }: AuthUserId): Promise<MsgResDTO> {
@@ -227,7 +231,7 @@ export class MessageService {
       const comments = await this.commentRepository
         .createQueryBuilder('comment')
         .select()
-        .leftJoinAndSelect('comment.author', 'author') // TODO: 탈퇴했으면 앱단에서 알 수 없음 표시 (inner 대신 left join 이유)
+        .innerJoinAndSelect('comment.author', 'author')
         .where('comment.message.id = :messageFamId', { messageFamId })
         .andWhere('comment.status = :status', { status: CommentStatus.ACTIVE })
         .orderBy('comment.createdAt', 'DESC')
@@ -265,6 +269,14 @@ export class MessageService {
         .execute();
 
       const commentId = insertResult.raw?.insertId;
+
+      // 알림: 댓글 알림
+      const sqsDTO = new SqsNotificationProduceDTO(
+        NotificationType.COMMENT_MESSAGE,
+        { familyId, messageFamId },
+      );
+
+      this.sqsNotificationService.sendNotification(sqsDTO);
 
       return { result: true, id: commentId };
     } catch (e) {

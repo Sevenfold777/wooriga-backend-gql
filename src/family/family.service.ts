@@ -152,7 +152,6 @@ export class FamilyService {
       //   await queryRunner.rollbackTransaction(); // for test
       await queryRunner.commitTransaction();
 
-      // TODO: fire user.updated event
       this.eventEmitter.emit('family.joined', {
         userId,
         familyId: familyToJoin,

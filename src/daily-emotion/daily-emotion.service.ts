@@ -1,3 +1,4 @@
+import { SqsNotificationService } from './../sqs-notification/sqs-notification.service';
 import { Injectable } from '@nestjs/common';
 import { AuthUserId } from 'src/auth/constants/auth-user-id.type';
 import { BaseResponseDTO } from 'src/common/dto/base-res.dto';
@@ -12,6 +13,8 @@ import { User } from 'src/user/entities/user.entity';
 import { UserStatus } from 'src/user/constants/user-status.enum';
 import { PaginationByDateReqDTO } from './dto/pagination-by-date-req.dto';
 import { DailyEmoByDateDTO } from './dto/daily-emo-by-date.dto';
+import { SqsNotificationProduceDTO } from 'src/sqs-notification/dto/sqs-notification-produce.dto';
+import { NotificationType } from 'src/sqs-notification/constants/notification-type';
 
 @Injectable()
 export class DailyEmotionService {
@@ -21,6 +24,7 @@ export class DailyEmotionService {
     private dailyEmoRepository: Repository<DailyEmotion>,
     @InjectRepository(User)
     private userRepository: Repository<User>,
+    private readonly sqsNotificationService: SqsNotificationService,
   ) {}
 
   async findMyEmotionToday({ userId }: AuthUserId): Promise<DailyEmoResDTO> {
@@ -133,7 +137,7 @@ export class DailyEmotionService {
   }
 
   async chooseEmotion(
-    { userId }: AuthUserId,
+    { userId, familyId }: AuthUserId,
     { type }: ChooseDailyEmoReqDTO,
   ): Promise<BaseResponseDTO> {
     try {
@@ -151,7 +155,13 @@ export class DailyEmotionService {
         transaction: false,
       });
 
-      // TODO: send notification
+      // 알림: send notification
+      const sqsDTO = new SqsNotificationProduceDTO(
+        NotificationType.EMOTION_CHOSEN,
+        { familyId },
+      );
+
+      this.sqsNotificationService.sendNotification(sqsDTO);
 
       return { result: true };
     } catch (e) {
@@ -206,7 +216,14 @@ export class DailyEmotionService {
         .andWhere('user.status = :status', { status: UserStatus.ACTIVE })
         .getOneOrFail();
 
-      // TODO: send notification
+      // 알림: send notification
+      const sqsDTO = new SqsNotificationProduceDTO(
+        NotificationType.EMOTION_POKE,
+        { userId: targetUser.id },
+      );
+
+      // 알림 보내는 것 자체가 목적이므로, 예외적으로 await 붙임
+      await this.sqsNotificationService.sendNotification(sqsDTO);
 
       return { result: true };
     } catch (e) {

@@ -1,34 +1,18 @@
 import {
-  IsBoolean,
-  IsEnum,
-  IsNumber,
-  IsObject,
-  IsOptional,
-  Min,
-} from 'class-validator';
-import { NotificationType } from '../constants/notification-type.enum';
+  NotificationParamType,
+  NotificationType,
+} from '../constants/notification-type';
 
-export class SqsNotificationProduceDTO {
-  @IsEnum(NotificationType)
-  type: NotificationType;
+export class SqsNotificationProduceDTO<T extends NotificationType> {
+  type: T;
 
-  @IsOptional()
-  @IsNumber()
-  @Min(1) // TODO set minimum familyId
-  familyId?: number;
+  param: NotificationParamType[T];
 
-  @IsOptional()
-  @IsNumber()
-  senderId?: number;
+  save?: boolean; // default false
 
-  @IsOptional()
-  @IsBoolean()
-  save?: boolean = false; // TODO default value
-
-  @IsOptional()
-  screen?: string; // TODO screen enum (sync to React Native)
-
-  @IsOptional()
-  @IsObject()
-  params?: any;
+  constructor(type: T, param: NotificationParamType[T], save = false) {
+    this.type = type;
+    this.param = param;
+    this.save = save;
+  }
 }

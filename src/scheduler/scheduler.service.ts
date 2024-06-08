@@ -9,6 +9,8 @@ import { Family } from 'src/family/entities/family.entity';
 import { Letter } from 'src/letter/entities/letter.entity';
 import { MessageFamily } from 'src/message/entities/message-family.entity';
 import { Message } from 'src/message/entities/message.entity';
+import { NotificationType } from 'src/sqs-notification/constants/notification-type';
+import { SqsNotificationProduceDTO } from 'src/sqs-notification/dto/sqs-notification-produce.dto';
 import { UserAuth } from 'src/user/entities/user-auth.entity';
 import { User } from 'src/user/entities/user.entity';
 import { Brackets, DataSource, Repository } from 'typeorm';
@@ -97,8 +99,13 @@ export class SchedulerService {
           ? console.error('No messagefamilies inserted.', insertResult)
           : console.log(insertResult);
 
-        // 4. TODO: sqs notif 요청
-        // this.sqsNotificationService.sendNotification({});
+        // 4. 알림: sqs notif 요청
+        const sqsDTO = new SqsNotificationProduceDTO(
+          NotificationType.MESSAGE_TODAY,
+          { familyIds: familiesByBatch.map((f) => f.id) },
+        );
+
+        this.sqsNotificationService.sendNotification(sqsDTO);
       }
 
       await queryRunner.commitTransaction();
@@ -122,11 +129,13 @@ export class SchedulerService {
       const todaySolar = new Date(new Date().toLocaleDateString('ko-KR'));
       const todayLunar = await convertSolarToLunarDate(todaySolar);
 
+      // TODO: distinct family test
+
       // 1. 생일인 user 찾기
       const query = this.userRepository
         .createQueryBuilder('user')
-        .select('user.id')
-        .addSelect('user.familyId')
+        .select('user.familyId')
+        .addSelect('MIN(user.id)')
         .where(
           new Brackets((qb) => {
             qb.where('isBirthLunar = false')
@@ -153,23 +162,24 @@ export class SchedulerService {
         );
       }
 
-      const usersOnBirthday = await query.getMany();
+      // TODO: group by로 distinct 역할 수행 확인
+      const familyHasBirthday = await query.groupBy('user.familyId').getMany();
 
       // 2. user.familyId에 랜덤 생일 메세지 보내기
       const BIRTHDAY_MESSAGE_BASE_ID = 301; // 설정된 생일 축하 메세지: 301 ~ 304
 
       for (
         let i = 0;
-        i < Math.ceil(usersOnBirthday.length / BATCH_ITEMS_COUNT);
+        i < Math.ceil(familyHasBirthday.length / BATCH_ITEMS_COUNT);
         i++
       ) {
-        const usersByBatch = usersOnBirthday.slice(
+        const familyByBatch = familyHasBirthday.slice(
           BATCH_ITEMS_COUNT * i,
           BATCH_ITEMS_COUNT * (i + 1),
         );
 
         const insertValues: QueryDeepPartialEntity<MessageFamily>[] =
-          usersByBatch.map((user) => ({
+          familyByBatch.map((user) => ({
             message: { id: BIRTHDAY_MESSAGE_BASE_ID + (user.id % 4) },
             family: { id: user.familyId },
             receivedAt: new Date(),
@@ -183,9 +193,15 @@ export class SchedulerService {
           .updateEntity(false)
           .execute();
 
-        // 3. TODO: sqs notif 요청
+        // 3. 알림: sqs notif 요청
+        const sqsDTO = new SqsNotificationProduceDTO(
+          NotificationType.MESSAGE_BIRTHDAY,
+          { familyIds: familyByBatch.map((user) => user.familyId) },
+        );
+
+        this.sqsNotificationService.sendNotification(sqsDTO);
       }
-      await queryRunner.commitTransaction(); // TODO: 배포 전에 활성화
+      await queryRunner.commitTransaction();
     } catch (e) {
       await queryRunner.rollbackTransaction();
       console.error(e.message);
@@ -270,11 +286,24 @@ export class SchedulerService {
 
     const usersOnBirthday = await query.getMany();
 
-    // 2. TODO: sqs notif 요청
+    // 2. 알림: sqs notif 요청
+    const sqsDTO = new SqsNotificationProduceDTO(
+      NotificationType.NOTIFY_BIRTHDAY,
+      {
+        familyIdsWithUserId: usersOnBirthday.map((user) => ({
+          familyId: user.familyId,
+          birthdayUserId: user.id,
+        })),
+      },
+    );
+
+    this.sqsNotificationService.sendNotification(sqsDTO);
   }
 
   @Cron('0 * * * * *')
   async notifyTimeCapsuleOpened(): Promise<void> {
+    const BATCH_ITEMS_COUNT = 250;
+
     const now = new Date();
     const oneMinuteAgo = new Date(now.getTime() - 1000 * 60);
 
@@ -293,7 +322,30 @@ export class SchedulerService {
       .andWhere('receiveDate <= :now', { now })
       .getMany();
 
-    // 2. TODO: sqs notif 요청
+    for (
+      let i = 0;
+      i < Math.ceil(timeCapsulesToNotify.length / BATCH_ITEMS_COUNT);
+      i++
+    ) {
+      const lettersByBatch = timeCapsulesToNotify.slice(
+        BATCH_ITEMS_COUNT * i,
+        BATCH_ITEMS_COUNT * (i + 1),
+      );
+
+      // 2. 알림: sqs notif 요청
+      const sqsDTO = new SqsNotificationProduceDTO(
+        NotificationType.TIMECAPSULE_OPENED,
+        {
+          timaCapsules: lettersByBatch.map((letter) => ({
+            letterId: letter.id,
+            receiverId: letter.receiver.id,
+            senderId: letter.sender.id,
+          })),
+        },
+      );
+
+      this.sqsNotificationService.sendNotification(sqsDTO);
+    }
   }
 
   @Cron('0 59 23 * * *', { timeZone: process.env.TZ })
