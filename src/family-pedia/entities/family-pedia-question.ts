@@ -10,6 +10,7 @@ export class FamilyPediaQuestion extends CoreEntity {
   @ManyToOne(() => FamilyPedia, (familyPedia) => familyPedia.questions, {
     onDelete: 'CASCADE',
   })
+  @JoinColumn({ name: 'familyPediaId' })
   @Field(() => FamilyPedia)
   familyPedia: FamilyPedia;
 

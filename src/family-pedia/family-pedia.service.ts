@@ -49,7 +49,9 @@ export class FamilyPediaService {
         .updateEntity(false)
         .execute();
 
-      const pediaId = pediaResult.raw.insertId;
+      if (!pediaResult.raw.insertId) {
+        throw new Error('Cannot save the family pedia.');
+      }
 
       // default question bulk insert
       const qInsertQuery = this.pediaRepository
@@ -58,7 +60,7 @@ export class FamilyPediaService {
         .into(FamilyPediaQuestion);
 
       for (const q of defaultQuestions) {
-        qInsertQuery.values({ familyPedia: { id: pediaId }, question: q });
+        qInsertQuery.values({ familyPedia: { ownerId }, question: q });
       }
 
       await qInsertQuery.execute();
@@ -112,7 +114,7 @@ export class FamilyPediaService {
           { familyId },
         )
         .leftJoinAndSelect('pedia.questions', 'question')
-        .where('pedia.id = :id', { id })
+        .where('pedia.owner.id = :id', { id })
         .getOneOrFail();
 
       return { result: true, familyPedia: pedia };
@@ -140,7 +142,7 @@ export class FamilyPediaService {
         .values({
           question,
           questioner: { id: userId },
-          familyPedia: { id: pediaId },
+          familyPedia: { owner: { id: pediaId } },
         })
         .updateEntity(false)
         .execute();
@@ -179,7 +181,7 @@ export class FamilyPediaService {
         .createQueryBuilder('question')
         .update()
         .where('questioner.id = :userId', { userId })
-        .andWhere('familyPedia.id = :pediaId', { pediaId })
+        .andWhere('familyPedia.ownerId = :pediaId', { pediaId })
         .andWhere('id = :id', { id })
         .andWhere('answer IS NULL')
         .set({ question })
@@ -255,18 +257,20 @@ export class FamilyPediaService {
 
   async answerQuestion(
     { userId, familyId }: AuthUserId,
-    { id, answer, pediaId }: AnswerQuestionReqDTO,
+    { id, answer }: AnswerQuestionReqDTO,
   ): Promise<BaseResponseDTO> {
     try {
       // 자신의 인물사전인지 체크
       const question = await this.questionRepository
         .createQueryBuilder('question')
         .select('question.id')
-        .innerJoin('question.familyPedia', 'pedia', 'pedia.id = :pediaId', {
-          pediaId,
-        })
+        .innerJoin(
+          'question.familyPedia',
+          'pedia',
+          'pedia.ownerId = :pediaId',
+          { pediaId: userId },
+        )
         .where('question.id = :id', { id })
-        .andWhere('pedia.owner.id = :userId', { userId })
         .getOne();
 
       if (!Boolean(question)) {
@@ -278,7 +282,7 @@ export class FamilyPediaService {
         .createQueryBuilder('question')
         .update()
         .where('id = :id', { id })
-        .andWhere('familyPedia.id = :pediaId', { pediaId })
+        .andWhere('familyPedia.ownerId = :pediaId', { pediaId: userId })
         .set({ answer })
         .updateEntity(false)
         .execute();
@@ -304,11 +308,11 @@ export class FamilyPediaService {
   async pediaFamValidate(pediaId: number, familyId: number): Promise<boolean> {
     const exist = await this.pediaRepository
       .createQueryBuilder('pedia')
-      .select('pedia.id')
+      .select('pedia.ownerId')
       .innerJoin('pedia.owner', 'owner', 'owner.familyId = :familyId', {
         familyId,
       })
-      .where('pedia.id = :pediaId', { pediaId })
+      .where('pedia.owner.id = :pediaId', { pediaId })
       .getOne();
 
     return Boolean(exist);

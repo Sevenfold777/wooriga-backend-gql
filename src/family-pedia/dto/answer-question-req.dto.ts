@@ -8,10 +8,6 @@ export class AnswerQuestionReqDTO {
   id: number;
 
   @Field()
-  @IsNumber()
-  pediaId: number;
-
-  @Field()
   //   @IsNotEmpty() // 빈칸으로 바꾸기 가능하도록 구현
   @IsString()
   answer: string;

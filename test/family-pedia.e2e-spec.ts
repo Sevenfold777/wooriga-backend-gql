@@ -49,7 +49,7 @@ describe('Family Pedia Module (e2e)', () => {
                 result
                 error
                 familyPedias {
-                    id
+                    ownerId
                     owner {
                         id
                         userName
@@ -91,7 +91,7 @@ describe('Family Pedia Module (e2e)', () => {
                 result
                 error
                 familyPedia {
-                    id
+                    ownerId
                     owner {
                         id
                         userName
@@ -120,7 +120,7 @@ describe('Family Pedia Module (e2e)', () => {
 
         expect(result).toBe(true);
         expect(error).toBeNull();
-        expect(familyPedia.id).toBe(TEST_USER_ID);
+        expect(familyPedia.ownerId).toBe(TEST_USER_ID);
         expect(familyPedia.questions).not.toBeNull();
 
         if (familyPedia.questions.length > 0) {
@@ -138,7 +138,7 @@ describe('Family Pedia Module (e2e)', () => {
                 result
                 error
                 familyPedia {
-                    id
+                    ownerId
                     owner {
                         id
                         userName
@@ -273,7 +273,7 @@ describe('Family Pedia Module (e2e)', () => {
     const inserted = await questionRepository.insert({
       question: 'test question',
       questioner: { id: TEST_FAMILY_USER_ID2 },
-      familyPedia: { id: TEST_FAMILY_USER_ID1 },
+      familyPedia: { owner: { id: TEST_FAMILY_USER_ID1 } },
     });
 
     const newQuestionId = inserted.raw.insertId;
@@ -344,7 +344,7 @@ describe('Family Pedia Module (e2e)', () => {
 
     const query = `
         mutation {
-            answerQuestion(id: ${createdQuestionId}, pediaId: ${TEST_USER_ID}, answer: "${answerPayload}") {
+            answerQuestion(id: ${createdQuestionId}, answer: "${answerPayload}") {
                 result
                 error
             }
@@ -379,7 +379,7 @@ describe('Family Pedia Module (e2e)', () => {
     const insertResult = await questionRepository.insert({
       question: 'question for test',
       questioner: { id: TEST_USER_ID },
-      familyPedia: { id: TEST_FAMILY_USER_ID1 },
+      familyPedia: { owner: { id: TEST_FAMILY_USER_ID1 } },
     });
 
     const newQuestionId = insertResult.raw.insertId;
@@ -388,7 +388,7 @@ describe('Family Pedia Module (e2e)', () => {
 
     const query = `
         mutation {
-            answerQuestion(id: ${newQuestionId}, pediaId: ${TEST_FAMILY_USER_ID1}, answer: "${answerPayload}") {
+            answerQuestion(id: ${newQuestionId}, answer: "${answerPayload}") {
                 result
                 error
             }
@@ -420,7 +420,7 @@ describe('Family Pedia Module (e2e)', () => {
     const insertResult = await questionRepository.insert({
       question: 'test question',
       questioner: { id: TEST_USER_ID },
-      familyPedia: { id: TEST_FAMILY_USER_ID1 },
+      familyPedia: { owner: { id: TEST_FAMILY_USER_ID1 } },
     });
     const newQuestionId = insertResult.raw.insertId;
 
@@ -461,7 +461,7 @@ describe('Family Pedia Module (e2e)', () => {
     const insertResult = await questionRepository.insert({
       question: 'test question',
       questioner: { id: TEST_FAMILY_USER_ID1 },
-      familyPedia: { id: TEST_USER_ID },
+      familyPedia: { owner: { id: TEST_USER_ID } },
     });
     const newQuestionId = insertResult.raw.insertId;
 
@@ -502,7 +502,7 @@ describe('Family Pedia Module (e2e)', () => {
     const insertResult = await questionRepository.insert({
       question: 'test question',
       questioner: { id: TEST_USER_ID },
-      familyPedia: { id: TEST_FAMILY_USER_ID1 },
+      familyPedia: { owner: { id: TEST_FAMILY_USER_ID1 } },
       answer: 'test answer',
     });
     const newQuestionId = insertResult.raw.insertId;
@@ -540,7 +540,7 @@ describe('Family Pedia Module (e2e)', () => {
     const insertResult = await questionRepository.insert({
       question: 'test question',
       questioner: { id: TEST_FAMILY_USER_ID1 },
-      familyPedia: { id: TEST_USER_ID },
+      familyPedia: { owner: { id: TEST_USER_ID } },
       answer: 'test answer',
     });
     const newQuestionId = insertResult.raw.insertId;
@@ -582,7 +582,7 @@ describe('Family Pedia Module (e2e)', () => {
     const insertResult = await questionRepository.insert({
       question: 'test question',
       questioner: { id: TEST_FAMILY_USER_ID2 },
-      familyPedia: { id: TEST_FAMILY_USER_ID1 },
+      familyPedia: { owner: { id: TEST_FAMILY_USER_ID1 } },
     });
     const newQuestionId = insertResult.raw.insertId;
 
@@ -619,7 +619,7 @@ describe('Family Pedia Module (e2e)', () => {
     const insertResult = await questionRepository.insert({
       question: 'test question',
       questioner: { id: invalidFamilyMemberId },
-      familyPedia: { id: invalidFamilyMemberId },
+      familyPedia: { owner: { id: invalidFamilyMemberId } },
     });
     const newQuestionId = insertResult.raw.insertId;
 
