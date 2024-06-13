@@ -2,7 +2,7 @@ import { CoreEntity } from 'src/common/entites/core.entity';
 import { User } from 'src/user/entities/user.entity';
 import { Entity, Column, ManyToOne } from 'typeorm';
 import { LetterEmotionType } from '../constants/letter-emotion-type.enum';
-import { Field, ObjectType } from '@nestjs/graphql';
+import { Field, Int, ObjectType } from '@nestjs/graphql';
 
 @Entity()
 @ObjectType()
@@ -27,9 +27,17 @@ export class Letter extends CoreEntity {
   @Field(() => Boolean)
   isTemp: boolean; // 임시저장
 
+  @Column()
+  @Field(() => Int)
+  senderId: number;
+
   @ManyToOne(() => User, { createForeignKeyConstraints: false })
   @Field(() => User)
   sender: User;
+
+  @Column()
+  @Field(() => Int)
+  receiverId: number;
 
   @ManyToOne(() => User, { createForeignKeyConstraints: false })
   @Field(() => User)

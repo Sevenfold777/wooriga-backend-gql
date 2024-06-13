@@ -5,9 +5,13 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Letter } from './entities/letter.entity';
 import { LetterGuide } from './entities/letter-guide.entity';
 import { User } from 'src/user/entities/user.entity';
+import { SqsNotificationModule } from 'src/sqs-notification/sqs-notification.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Letter, LetterGuide, User])],
+  imports: [
+    TypeOrmModule.forFeature([Letter, LetterGuide, User]),
+    SqsNotificationModule,
+  ],
   providers: [LetterResolver, LetterService],
 })
 export class LetterModule {}

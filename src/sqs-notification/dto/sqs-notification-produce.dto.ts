@@ -8,11 +8,8 @@ export class SqsNotificationProduceDTO<T extends NotificationType> {
 
   param: NotificationParamType[T];
 
-  save?: boolean; // default false
-
-  constructor(type: T, param: NotificationParamType[T], save = false) {
+  constructor(type: T, param: NotificationParamType[T]) {
     this.type = type;
     this.param = param;
-    this.save = save;
   }
 }

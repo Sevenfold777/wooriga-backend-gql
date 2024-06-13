@@ -27,6 +27,7 @@ export class SqsNotificationService {
   }
 
   async sendNotification(body: SqsNotificationProduceDTO<NotificationType>) {
+    return;
     try {
       const command = new SendMessageCommand({
         DelaySeconds: 0,
@@ -40,6 +41,7 @@ export class SqsNotificationService {
     }
   }
 
+  // TODO: polling on scheduler module
   /**
    * FIFO SQS가 아니기에 정확한 순서를 보장하지 않음
    * Queue에 여러 개의 메세지가 있어도 한 개 또는 적은 수만 반환할 수 있음

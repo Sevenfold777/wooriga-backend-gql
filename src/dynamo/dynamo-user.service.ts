@@ -42,6 +42,7 @@ export class DynamoUserService {
     familyId,
   }: DynamoEditFamilyIdReqDTO): Promise<void> {
     try {
+      // AWARE: dynamodb의 update item은 upsert 동작
       const command = new UpdateCommand({
         TableName: this.table,
         Key: {

@@ -6,6 +6,7 @@ import {
   IsOptional,
   IsNumber,
   IsDate,
+  ArrayNotEmpty,
 } from 'class-validator';
 import { LetterEmotionType } from '../constants/letter-emotion-type.enum';
 
@@ -29,17 +30,17 @@ export class SendLetterReqDTO {
   @IsBoolean()
   isTimeCapsule: boolean;
 
-  @Field(() => Date)
+  @Field(() => Date, { nullable: true })
   @IsDate() // TODO: test 해보기
   @IsOptional()
   receiveDate?: Date;
 
-  @Field(() => Int)
+  @Field(() => [Int])
   @IsNumber({}, { each: true })
+  @ArrayNotEmpty()
   receivers: number[];
 
   @Field(() => Boolean)
-  @IsOptional()
   @IsBoolean()
-  isTemp?: boolean;
+  isTemp: boolean;
 }

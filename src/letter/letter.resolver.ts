@@ -11,6 +11,7 @@ import { CreateResDTO } from 'src/common/dto/create-res.dto';
 import { LetterResDTO } from './dto/letter-res.dto';
 import { LetterBoxResDTO } from './dto/letter-box-res.dto';
 import { LetterGuideResDTO } from './dto/letter-guide-res.dto';
+import { EditLetterKeptReqDTO } from './dto/edit-letter-kept-req.dto';
 
 @Resolver()
 export class LetterResolver {
@@ -65,19 +66,11 @@ export class LetterResolver {
   }
 
   @Mutation(() => BaseResponseDTO)
-  keepLetter(
+  editLetterKept(
     @AuthUser() user: AuthUserId,
-    @Args('id', { type: () => Int }) id: number,
+    @Args() editLetterKeptReqDTO: EditLetterKeptReqDTO,
   ): Promise<BaseResponseDTO> {
-    return this.letterService.keepLetter(user, id);
-  }
-
-  @Mutation(() => BaseResponseDTO)
-  unkeepLetter(
-    @AuthUser() user: AuthUserId,
-    @Args('id', { type: () => Int }) id: number,
-  ): Promise<BaseResponseDTO> {
-    return this.letterService.unkeepLetter(user, id);
+    return this.letterService.editLetterKept(user, editLetterKeptReqDTO);
   }
 
   @Query(() => LetterGuideResDTO)

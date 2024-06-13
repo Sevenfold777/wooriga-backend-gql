@@ -10,12 +10,16 @@ import { LetterResDTO } from './dto/letter-res.dto';
 import { LetterBoxResDTO } from './dto/letter-box-res.dto';
 import { CreateResDTO } from 'src/common/dto/create-res.dto';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, InsertResult, Repository } from 'typeorm';
 import { Letter } from './entities/letter.entity';
 import { LetterType } from './constants/letter-type.enum';
 import { LetterBoxType } from './constants/letter-box-type.enum';
 import { LetterGuideResDTO } from './dto/letter-guide-res.dto';
 import { User } from 'src/user/entities/user.entity';
+import { SqsNotificationService } from 'src/sqs-notification/sqs-notification.service';
+import { NotificationType } from 'src/sqs-notification/constants/notification-type';
+import { SqsNotificationProduceDTO } from 'src/sqs-notification/dto/sqs-notification-produce.dto';
+import { EditLetterKeptReqDTO } from './dto/edit-letter-kept-req.dto';
 
 @Injectable()
 export class LetterService {
@@ -25,14 +29,13 @@ export class LetterService {
     @InjectRepository(Letter) private letterRepository: Repository<Letter>,
     @InjectRepository(LetterGuide)
     private guideRepository: Repository<LetterGuide>,
+    private readonly sqsNotificationService: SqsNotificationService,
   ) {}
 
   async sendLetter(
     { userId, familyId }: AuthUserId,
     sendLetterReqDTO: SendLetterReqDTO,
   ): Promise<CreateResDTO> {
-    // TODO: 임시저장한 편지 수정 로직
-
     try {
       const {
         title,
@@ -45,49 +48,97 @@ export class LetterService {
       } = sendLetterReqDTO;
 
       let letterId: number;
-      // 1. 임시저장
+
+      /**
+       * 1. 임시저장
+       * 한 번의 요청으로 여러 개의 resolver를 호출하는 gql 특성 활용 (sendLetter + deleteLetter)
+       * 현재는 편지 작성 완료시 새로운 편지 엔티티 등록,
+       * 임시저장 메세지는 삭제 요청 (임시 저장 수정시 총 2개의 요청)
+       */
       if (isTemp) {
-        const newLetter = this.letterRepository.create({
-          title,
-          payload,
-          emotion,
-          isTimeCapsule,
-          receiveDate: isTimeCapsule ? receiveDate : new Date(),
-          sender: { id: userId },
-          ...(isTemp && { isTemp }),
-        });
-
-        const letter = await this.letterRepository.save(newLetter);
-        letterId = letter.id;
-      }
-      // 2. 실제 전송
-      else {
-        const receiversFromDB = await this.userRepository
-          .createQueryBuilder('user')
-          .select()
-          .where('user.id IN(:...receiverIds)', { receiverIds: receivers })
-          .andWhere('user.familyId = :familyId', { familyId })
-          .getMany();
-
-        for (const receiver of receiversFromDB) {
-          const newLetter = this.letterRepository.create({
+        const letter = await this.letterRepository
+          .createQueryBuilder('letter')
+          .insert()
+          .into(Letter)
+          .values({
             title,
             payload,
             emotion,
             isTimeCapsule,
             receiveDate: isTimeCapsule ? receiveDate : new Date(),
             sender: { id: userId },
-            ...(receiver.id !== -1 && { receiver: { id: receiver.id } }),
-            ...(isTemp && { isTemp }),
+            isTemp,
+          })
+          .updateEntity(false)
+          .execute();
+
+        letterId = letter.raw?.insertId;
+      }
+      // 2. 실제 전송
+      else {
+        const insertPromises: {
+          promise: Promise<InsertResult>;
+          receiverId: number;
+        }[] = [];
+
+        // check if sender and receiver in same family
+        const receiversFromDB = await this.userRepository
+          .createQueryBuilder('user')
+          .select('user.id')
+          .where('user.id IN(:...receiverIds)', { receiverIds: receivers })
+          .andWhere('user.familyId = :familyId', { familyId })
+          .getMany();
+
+        // 정책: 한 명이라도 가족 아닌 사용자가 껴 있으면 전체 reject
+        if (
+          receivers.length !== receiversFromDB.length ||
+          receiversFromDB.length === 0
+        ) {
+          throw new Error('Request with invalid receivers.');
+        }
+
+        for (const receiver of receiversFromDB) {
+          insertPromises.push({
+            promise: this.letterRepository
+              .createQueryBuilder('letter')
+              .insert()
+              .into(Letter)
+              .values({
+                title,
+                payload,
+                emotion,
+                isTimeCapsule,
+                receiveDate: isTimeCapsule ? receiveDate : new Date(),
+                sender: { id: userId },
+                ...(receiver.id !== -1 && { receiver: { id: receiver.id } }),
+                isTemp,
+              })
+              .updateEntity(false)
+              .execute(),
+            receiverId: receiver.id,
           });
+        }
 
-          const letter = await this.letterRepository.save(newLetter);
-          letterId = letter.id;
+        const insertResults = await Promise.all(
+          insertPromises.map((p) => p.promise),
+        );
 
-          // TODO: notification
+        for (let i = 0; i < insertPromises.length; i++) {
+          const insertResult = insertResults[i];
+
+          letterId = insertResult.raw?.insertId;
+
+          // request notification
+          const sqsDTO = new SqsNotificationProduceDTO(
+            NotificationType.LETTER_SEND,
+            { receiverId: insertPromises[i].receiverId, letterId },
+          );
+
+          this.sqsNotificationService.sendNotification(sqsDTO); // AWARE: await 하지 않음
         }
       }
 
+      // 여러 명에게 편지를 동시에 전송한다면, 가장 마지막에 전송한 편지의 id return
       return { result: true, id: letterId };
     } catch (e) {
       return { result: false, error: e.message };
@@ -124,8 +175,7 @@ export class LetterService {
     { userId }: AuthUserId,
     editLetterReqDTO: EditLetterReqDTO,
   ): Promise<BaseResponseDTO> {
-    // TODO: receiver 수정 가능하게 할지
-
+    // 정책: receiver 수정 불가 => 수정 원할 경우 편지 삭제 후, 해당 사용자를 receiver 설정하여 새로 작성
     try {
       const {
         id,
@@ -155,7 +205,7 @@ export class LetterService {
         .execute();
 
       if (updateResult.affected !== 1) {
-        throw new Error('Cannot keep letter. (Cannot update the entity)');
+        throw new Error('Cannot edit letter. (Cannot update the entity)');
       }
 
       return { result: true };
@@ -184,7 +234,7 @@ export class LetterService {
         .execute();
 
       if (deleteResult.affected !== 1) {
-        throw new Error('Cannot keep letter. (Cannot update the entity)');
+        throw new Error('Cannot delete the letter.');
       }
 
       await queryRunner.commitTransaction();
@@ -305,9 +355,9 @@ export class LetterService {
     }
   }
 
-  async keepLetter(
+  async editLetterKept(
     { userId }: AuthUserId,
-    id: number,
+    { id, kept }: EditLetterKeptReqDTO,
   ): Promise<BaseResponseDTO> {
     try {
       const updateResult = await this.letterRepository
@@ -315,36 +365,12 @@ export class LetterService {
         .update()
         .where('id = :id', { id })
         .andWhere('receiver.id = :userId', { userId })
-        .set({ kept: true })
+        .set({ kept })
         .updateEntity(false)
         .execute();
 
       if (updateResult.affected !== 1) {
-        throw new Error('Cannot keep letter. (Cannot update the entity)');
-      }
-
-      return { result: true };
-    } catch (e) {
-      return { result: false, error: e.message };
-    }
-  }
-
-  async unkeepLetter(
-    { userId }: AuthUserId,
-    id: number,
-  ): Promise<BaseResponseDTO> {
-    try {
-      const updateResult = await this.letterRepository
-        .createQueryBuilder('letter')
-        .update()
-        .where('id = :id', { id })
-        .andWhere('receiver.id = :userId', { userId })
-        .set({ kept: false })
-        .updateEntity(false)
-        .execute();
-
-      if (updateResult.affected !== 1) {
-        throw new Error('Cannot unkeep letter. (Cannot update the entity)');
+        throw new Error('Cannot edit letter kept. (Cannot update the entity)');
       }
 
       return { result: true };

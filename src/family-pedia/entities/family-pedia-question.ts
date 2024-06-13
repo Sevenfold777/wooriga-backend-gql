@@ -7,6 +7,7 @@ import { User } from 'src/user/entities/user.entity';
 @Entity({ name: 'family_pedia_row' })
 @ObjectType()
 export class FamilyPediaQuestion extends CoreEntity {
+  // TODO: 운영 DB의 familyPediaId를 ownerId에 맞게 전체 수정해줘야 함
   @ManyToOne(() => FamilyPedia, (familyPedia) => familyPedia.questions, {
     onDelete: 'CASCADE',
   })

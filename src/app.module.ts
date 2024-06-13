@@ -9,7 +9,6 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { AuthModule } from './auth/auth.module';
 import { User } from './user/entities/user.entity';
 import { UserAuth } from './user/entities/user-auth.entity';
-import { UploadModule } from './upload/upload.module';
 import { AdminModule } from './admin/admin.module';
 import { BannerModule } from './banner/banner.module';
 import { FamilyModule } from './family/family.module';
@@ -44,6 +43,7 @@ import { DynamoModule } from './dynamo/dynamo.module';
 import { SchedulerModule } from './scheduler/scheduler.module';
 import { DAU } from './admin/entities/dau.entity';
 import { MAU } from './admin/entities/mau.entity';
+import { RedisModule } from './redis/redis.module';
 
 @Module({
   imports: [
@@ -92,7 +92,6 @@ import { MAU } from './admin/entities/mau.entity';
     }),
     UserModule,
     AuthModule,
-    UploadModule,
     AdminModule,
     BannerModule,
     FamilyModule,
@@ -106,6 +105,7 @@ import { MAU } from './admin/entities/mau.entity';
     SqsNotificationModule,
     DynamoModule,
     SchedulerModule,
+    RedisModule,
   ],
   controllers: [AppController],
 })
