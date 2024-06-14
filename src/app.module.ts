@@ -43,7 +43,7 @@ import { DynamoModule } from './dynamo/dynamo.module';
 import { SchedulerModule } from './scheduler/scheduler.module';
 import { DAU } from './admin/entities/dau.entity';
 import { MAU } from './admin/entities/mau.entity';
-import { RedisModule } from './redis/redis.module';
+import { RedisFamilyMemberModule } from './redis-family-member/redis-family-member.module';
 
 @Module({
   imports: [
@@ -105,7 +105,7 @@ import { RedisModule } from './redis/redis.module';
     SqsNotificationModule,
     DynamoModule,
     SchedulerModule,
-    RedisModule,
+    RedisFamilyMemberModule,
   ],
   controllers: [AppController],
 })
