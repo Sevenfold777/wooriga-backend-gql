@@ -27,12 +27,13 @@ export class Letter extends CoreEntity {
   @Field(() => Boolean)
   isTemp: boolean; // 임시저장
 
+  // sender receiver에 대하여 onDelete Cascade 되지 않음 (=>left join 사용)
   @Column()
-  @Field(() => Int)
+  @Field(() => Int, { nullable: true })
   senderId: number;
 
   @ManyToOne(() => User, { createForeignKeyConstraints: false })
-  @Field(() => User)
+  @Field(() => User, { nullable: true })
   sender: User;
 
   @Column()
@@ -40,7 +41,7 @@ export class Letter extends CoreEntity {
   receiverId: number;
 
   @ManyToOne(() => User, { createForeignKeyConstraints: false })
-  @Field(() => User)
+  @Field(() => User, { nullable: true })
   receiver: User;
 
   /** for time capsules */

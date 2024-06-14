@@ -14,12 +14,20 @@ import { CreateResDTO } from 'src/common/dto/create-res.dto';
 import { BaseResponseDTO } from 'src/common/dto/base-res.dto';
 import { LetterGuide } from 'src/letter/entities/letter-guide.entity';
 import { LetterGuideResDTO } from 'src/letter/dto/letter-guide-res.dto';
+import { LetterType } from 'src/letter/constants/letter-type.enum';
+import { LetterResDTO } from 'src/letter/dto/letter-res.dto';
+import { LetterBoxType } from 'src/letter/constants/letter-box-type.enum';
+import { LetterBoxResDTO } from 'src/letter/dto/letter-box-res.dto';
+import { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
 
 describe('Letter module (e2e)', () => {
   let app: INestApplication;
   let letterRepository: Repository<Letter>;
   let letterGuideRepository: Repository<LetterGuide>;
 
+  const testTitle = 'test title';
+  const testPayload = 'test payload';
+  const testEmotion = LetterEmotionType.happy;
   const invalidFamilyMemberId = 7;
 
   beforeAll(async () => {
@@ -40,9 +48,6 @@ describe('Letter module (e2e)', () => {
 
   it('send letter - 즉시 전송', async () => {
     // given
-    const testTitle = 'test title';
-    const testPayload = 'test payload';
-    const testEmotion = LetterEmotionType.happy;
     const testReceivers = [TEST_FAMILY_USER_ID1, TEST_FAMILY_USER_ID2];
 
     // when
@@ -117,9 +122,6 @@ describe('Letter module (e2e)', () => {
 
   it('send letter - 임시저장', async () => {
     // given
-    const testTitle = 'test title';
-    const testPayload = 'test payload';
-    const testEmotion = LetterEmotionType.happy;
     const testReceivers = [TEST_FAMILY_USER_ID1, TEST_FAMILY_USER_ID2];
 
     // when
@@ -190,9 +192,6 @@ describe('Letter module (e2e)', () => {
 
   it('send letter - 임시저장 --> 실제 전송', async () => {
     // given
-    const testTitle = 'test title';
-    const testPayload = 'test payload';
-    const testEmotion = LetterEmotionType.happy;
 
     const testTitle2 = 'test title2';
     const testPayload2 = 'test payload2';
@@ -387,9 +386,6 @@ describe('Letter module (e2e)', () => {
 
   it('send letter - 가족 아닌 사용자에게 전송 실패', async () => {
     // given
-    const testTitle = 'test title';
-    const testPayload = 'test payload';
-    const testEmotion = LetterEmotionType.happy;
     const testReceivers = [invalidFamilyMemberId, TEST_FAMILY_USER_ID2];
 
     // when
@@ -430,9 +426,6 @@ describe('Letter module (e2e)', () => {
 
   it('edit letter', async () => {
     // given
-    const testTitle = 'test title';
-    const testPayload = 'test payload';
-    const testEmotion = LetterEmotionType.happy;
     const testReceiverId = TEST_FAMILY_USER_ID1;
     const testReceiveDate = new Date(new Date().getTime() + 1000 * 60 * 30);
 
@@ -508,9 +501,6 @@ describe('Letter module (e2e)', () => {
 
   it('edit letter - receiver 이미 읽은 경우 에러', async () => {
     // given
-    const testTitle = 'test title';
-    const testPayload = 'test payload';
-    const testEmotion = LetterEmotionType.happy;
     const testReceiverId = TEST_FAMILY_USER_ID1;
 
     const testLetter = await letterRepository.insert({
@@ -586,9 +576,6 @@ describe('Letter module (e2e)', () => {
 
   it('edit letter - sender 아닌 경우 에러', async () => {
     // given
-    const testTitle = 'test title';
-    const testPayload = 'test payload';
-    const testEmotion = LetterEmotionType.happy;
     const testReceiverId = TEST_FAMILY_USER_ID1;
 
     const testLetter = await letterRepository.insert({
@@ -663,9 +650,6 @@ describe('Letter module (e2e)', () => {
 
   it('read letter', async () => {
     // given
-    const testTitle = 'test title';
-    const testPayload = 'test payload';
-    const testEmotion = LetterEmotionType.happy;
     const testSenderId = TEST_FAMILY_USER_ID1;
 
     const testLetter = await letterRepository.insert({
@@ -730,9 +714,6 @@ describe('Letter module (e2e)', () => {
 
   it('read letter - receiver 아닌 경우 에러', async () => {
     // given
-    const testTitle = 'test title';
-    const testPayload = 'test payload';
-    const testEmotion = LetterEmotionType.happy;
     const testSenderId = TEST_FAMILY_USER_ID1;
 
     const testLetter = await letterRepository.insert({
@@ -800,9 +781,6 @@ describe('Letter module (e2e)', () => {
 
   it('delete letter', async () => {
     // given
-    const testTitle = 'test title';
-    const testPayload = 'test payload';
-    const testEmotion = LetterEmotionType.happy;
     const testReceiverId = TEST_FAMILY_USER_ID1;
 
     const testLetter = await letterRepository.insert({
@@ -853,9 +831,6 @@ describe('Letter module (e2e)', () => {
 
   it('delete letter - receiver 아닌 경우 에러', async () => {
     // given
-    const testTitle = 'test title';
-    const testPayload = 'test payload';
-    const testEmotion = LetterEmotionType.happy;
     const testSenderId = TEST_FAMILY_USER_ID1;
 
     const testLetter = await letterRepository.insert({
@@ -919,54 +894,979 @@ describe('Letter module (e2e)', () => {
   });
 
   it('find letter - SENT', async () => {
-    throw new Error('Not implemented.');
+    // given
+    const testReceiverId = TEST_FAMILY_USER_ID1;
+
+    const testLetter = await letterRepository.insert({
+      title: testTitle,
+      payload: testPayload,
+      emotion: testEmotion,
+      sender: { id: TEST_USER_ID },
+      receiver: { id: testReceiverId },
+      isTimeCapsule: false,
+      receiveDate: new Date(),
+      isTemp: false,
+    });
+
+    const testLetterId = testLetter.raw?.insertId;
+
+    // when
+    const query = `
+      query {
+        findLetter(id: ${testLetterId}, type: ${LetterType.SENT}) {
+          result
+          error
+          letter {
+            id
+            title
+            payload
+            emotion
+            senderId
+            receiver {
+              id
+              userName
+            }
+            isTimeCapsule
+            receiveDate
+            isTemp
+            isRead
+            kept
+          }
+        }
+      }
+    `;
+
+    await gqlAuthReq(app, query)
+      .expect(200)
+      .expect((res: { body: { data: { findLetter: LetterResDTO } } }) => {
+        const {
+          body: {
+            data: {
+              findLetter: { result, error, letter },
+            },
+          },
+        } = res;
+
+        // then
+        expect(result).toBe(true);
+        expect(error).toBeNull();
+
+        expect(letter.senderId).toBe(TEST_USER_ID);
+        expect(letter.receiver.id).toBe(testReceiverId);
+        expect(letter.receiver.userName).not.toBeNull();
+
+        expect(letter.id).toBe(testLetterId);
+        expect(letter.title).toBe(testTitle);
+        expect(letter.payload).toBe(testPayload);
+        expect(letter.emotion).toBe(testEmotion);
+        expect(letter.isTimeCapsule).toBe(false);
+        expect(letter.isTemp).toBe(false);
+        expect(letter.isRead).toBe(false);
+        expect(letter.kept).toBe(false);
+      });
+
+    // 생성한 테스트 letter 삭제
+    const res = await letterRepository.delete({
+      id: testLetterId,
+    });
+
+    expect(res.affected).toBe(1);
   });
 
   it('find letter - SENT, sender 아닌 경우 에러', async () => {
-    throw new Error('Not implemented.');
-  });
+    // given
+    const testSenderId = TEST_FAMILY_USER_ID2;
+    const testReceiverId = TEST_FAMILY_USER_ID1;
 
-  it('find letter - RECEIVED, receiver 아닌 경우 에러', async () => {
-    throw new Error('Not implemented.');
+    const testLetter = await letterRepository.insert({
+      title: testTitle,
+      payload: testPayload,
+      emotion: testEmotion,
+      sender: { id: testSenderId },
+      receiver: { id: testReceiverId },
+      isTimeCapsule: false,
+      receiveDate: new Date(),
+      isTemp: false,
+    });
+
+    const testLetterId = testLetter.raw?.insertId;
+
+    // when
+    const query = `
+      query {
+        findLetter(id: ${testLetterId}, type: ${LetterType.SENT}) {
+          result
+          error
+          letter {
+            id
+            title
+            payload
+            emotion
+            senderId
+            receiver {
+              id
+              userName
+            }
+            isTimeCapsule
+            receiveDate
+            isTemp
+            isRead
+            kept
+          }
+        }
+      }
+    `;
+
+    await gqlAuthReq(app, query)
+      .expect(200)
+      .expect((res: { body: { data: { findLetter: LetterResDTO } } }) => {
+        const {
+          body: {
+            data: {
+              findLetter: { result, error, letter },
+            },
+          },
+        } = res;
+
+        // then
+        expect(result).toBe(false);
+        expect(error).not.toBeNull();
+        expect(letter).toBeNull();
+      });
+
+    // 생성한 테스트 letter 삭제
+    const res = await letterRepository.delete({
+      id: testLetterId,
+    });
+
+    expect(res.affected).toBe(1);
   });
 
   it('find letter - RECEIVED', async () => {
-    throw new Error('Not implemented.');
+    // given
+    const testSenderId = TEST_FAMILY_USER_ID1;
+
+    const testLetter = await letterRepository.insert({
+      title: testTitle,
+      payload: testPayload,
+      emotion: testEmotion,
+      sender: { id: testSenderId },
+      receiver: { id: TEST_USER_ID },
+      isTimeCapsule: false,
+      receiveDate: new Date(),
+      isTemp: false,
+    });
+
+    const testLetterId = testLetter.raw?.insertId;
+
+    // when
+    const query = `
+      query {
+        findLetter(id: ${testLetterId}, type: ${LetterType.RECEIVED}) {
+          result
+          error
+          letter {
+            id
+            title
+            payload
+            emotion
+            sender {
+              id
+              userName
+            }
+            receiverId
+            isTimeCapsule
+            receiveDate
+            isTemp
+            isRead
+            kept
+          }
+        }
+      }
+    `;
+
+    await gqlAuthReq(app, query)
+      .expect(200)
+      .expect((res: { body: { data: { findLetter: LetterResDTO } } }) => {
+        const {
+          body: {
+            data: {
+              findLetter: { result, error, letter },
+            },
+          },
+        } = res;
+
+        // then
+        expect(result).toBe(true);
+        expect(error).toBeNull();
+
+        expect(letter.sender.id).toBe(testSenderId);
+        expect(letter.sender.userName).not.toBeNull();
+        expect(letter.receiverId).toBe(TEST_USER_ID);
+
+        expect(letter.id).toBe(testLetterId);
+        expect(letter.title).toBe(testTitle);
+        expect(letter.payload).toBe(testPayload);
+        expect(letter.emotion).toBe(testEmotion);
+        expect(letter.isTimeCapsule).toBe(false);
+        expect(letter.isTemp).toBe(false);
+        expect(letter.isRead).toBe(false);
+        expect(letter.kept).toBe(false);
+      });
+
+    // 생성한 테스트 letter 삭제
+    const res = await letterRepository.delete({
+      id: testLetterId,
+    });
+
+    expect(res.affected).toBe(1);
   });
 
-  it('find letter box - SENT & ALL', async () => {
-    throw new Error('Not implemented.');
+  it('find letter - RECEIVED, receiver 아닌 경우 에러', async () => {
+    // given
+    const testSenderId = TEST_FAMILY_USER_ID2;
+    const testReceiverId = TEST_FAMILY_USER_ID1;
+
+    const testLetter = await letterRepository.insert({
+      title: testTitle,
+      payload: testPayload,
+      emotion: testEmotion,
+      sender: { id: testSenderId },
+      receiver: { id: testReceiverId },
+      isTimeCapsule: false,
+      receiveDate: new Date(),
+      isTemp: false,
+    });
+
+    const testLetterId = testLetter.raw?.insertId;
+
+    // when
+    const query = `
+      query {
+        findLetter(id: ${testLetterId}, type: ${LetterType.RECEIVED}) {
+          result
+          error
+          letter {
+            id
+            title
+            payload
+            emotion
+            sender {
+              id
+              userName
+            }
+            receiverId
+            isTimeCapsule
+            receiveDate
+            isTemp
+            isRead
+            kept
+          }
+        }
+      }
+    `;
+
+    await gqlAuthReq(app, query)
+      .expect(200)
+      .expect((res: { body: { data: { findLetter: LetterResDTO } } }) => {
+        const {
+          body: {
+            data: {
+              findLetter: { result, error, letter },
+            },
+          },
+        } = res;
+
+        // then
+        expect(result).toBe(false);
+        expect(error).not.toBeNull();
+        expect(letter).toBeNull();
+      });
+
+    // 생성한 테스트 letter 삭제
+    const res = await letterRepository.delete({
+      id: testLetterId,
+    });
+
+    expect(res.affected).toBe(1);
   });
 
-  it('find letter box - SENT & Time Capsule Only', async () => {
-    throw new Error('Not implemented.');
+  it('find letter box - ALL & SENT', async () => {
+    // given
+    const letterFragment: QueryDeepPartialEntity<Letter> = {
+      title: testTitle,
+      payload: testPayload,
+      emotion: testEmotion,
+      sender: { id: TEST_USER_ID },
+      isTemp: false,
+      kept: false,
+    };
+
+    const {
+      raw: { insertId: testLetterId1 },
+    } = await letterRepository.insert({
+      ...letterFragment,
+      receiver: { id: TEST_FAMILY_USER_ID1 },
+      isTimeCapsule: false,
+      receiveDate: new Date(),
+    });
+
+    const {
+      raw: { insertId: testLetterId2 },
+    } = await letterRepository.insert({
+      ...letterFragment,
+      receiver: { id: TEST_FAMILY_USER_ID1 },
+      isTimeCapsule: false,
+      receiveDate: new Date(),
+    });
+
+    const {
+      raw: { insertId: testLetterId3 },
+    } = await letterRepository.insert({
+      ...letterFragment,
+      receiver: { id: TEST_FAMILY_USER_ID2 },
+      isTimeCapsule: true,
+      receiveDate: new Date(new Date().getTime() + 1000 * 60 * 60 * 24 * 5),
+    });
+
+    const take = 2;
+    const prev = 0;
+
+    const expectedLetterIdSeq = [testLetterId3, testLetterId2];
+
+    // when
+    const query = `
+      query {
+        findLetterBox(type: ${LetterType.SENT}, boxType: ${LetterBoxType.ALL}, take: ${take}, prev: ${prev}) {
+            result
+            error
+            letters {
+              id
+              title
+              payload
+              emotion
+              senderId
+              receiver {
+                id
+                userName
+              }
+              isTimeCapsule
+              receiveDate
+              isTemp
+              isRead
+              kept
+            }
+        }
+      }
+    `;
+
+    await gqlAuthReq(app, query)
+      .expect(200)
+      .expect((res: { body: { data: { findLetterBox: LetterBoxResDTO } } }) => {
+        const {
+          body: {
+            data: {
+              findLetterBox: { result, error, letters },
+            },
+          },
+        } = res;
+
+        // then
+        expect(result).toBe(true);
+        expect(error).toBeNull();
+        expect(letters.length).toBe(take);
+
+        letters.forEach((letter, idx) => {
+          expect(letter.id).toBe(expectedLetterIdSeq[idx]);
+
+          expect(letter.title).toBe(testTitle);
+          expect(letter.payload).toBe(testPayload);
+          expect(letter.emotion).toBe(testEmotion);
+          expect(letter.isTimeCapsule).toBe(!Boolean(idx % 2));
+          expect(letter.isTemp).toBe(false);
+          expect(letter.isRead).toBe(false);
+          expect(letter.kept).toBe(false);
+        });
+      });
+
+    // 엔티티 정리
+    const res = await letterRepository.delete({
+      id: In([testLetterId1, testLetterId2, testLetterId3]),
+    });
+
+    expect(res.affected).toBe(3);
   });
 
-  it('find letter box - SENT, sender 아닌 경우 에러', async () => {
-    throw new Error('Not implemented.');
+  it('find letter box - ALL & SENT - 임시저장 우선 정렬 테스트', async () => {
+    // given
+    const letterFragment: QueryDeepPartialEntity<Letter> = {
+      title: testTitle,
+      payload: testPayload,
+      emotion: testEmotion,
+      sender: { id: TEST_USER_ID },
+      kept: false,
+    };
+
+    const {
+      raw: { insertId: testLetterId1 },
+    } = await letterRepository.insert({
+      ...letterFragment,
+      receiver: { id: TEST_FAMILY_USER_ID1 },
+      isTimeCapsule: false,
+      receiveDate: new Date(),
+      isTemp: true, // 유일한 임시저장
+    });
+
+    const {
+      raw: { insertId: testLetterId2 },
+    } = await letterRepository.insert({
+      ...letterFragment,
+      receiver: { id: TEST_FAMILY_USER_ID1 },
+      isTimeCapsule: false,
+      receiveDate: new Date(),
+      isTemp: false,
+    });
+
+    const {
+      raw: { insertId: testLetterId3 },
+    } = await letterRepository.insert({
+      ...letterFragment,
+      receiver: { id: TEST_FAMILY_USER_ID2 },
+      isTimeCapsule: true,
+      receiveDate: new Date(new Date().getTime() + 1000 * 60 * 60 * 24 * 5),
+      isTemp: false,
+    });
+
+    const take = 2;
+    const prev = 0;
+
+    const expectedLetterIdSeq = [testLetterId1, testLetterId3];
+
+    // when
+    const query = `
+      query {
+        findLetterBox(type: ${LetterType.SENT}, boxType: ${LetterBoxType.ALL}, take: ${take}, prev: ${prev}) {
+            result
+            error
+            letters {
+              id
+              title
+              payload
+              emotion
+              senderId
+              receiverId
+              receiver {
+                id
+                userName
+              }
+              isTimeCapsule
+              receiveDate
+              isTemp
+              isRead
+              kept
+            }
+        }
+      }
+    `;
+
+    await gqlAuthReq(app, query)
+      .expect(200)
+      .expect((res: { body: { data: { findLetterBox: LetterBoxResDTO } } }) => {
+        const {
+          body: {
+            data: {
+              findLetterBox: { result, error, letters },
+            },
+          },
+        } = res;
+
+        // then
+        expect(result).toBe(true);
+        expect(error).toBeNull();
+        expect(letters.length).toBe(take);
+
+        letters.forEach((letter, idx) => {
+          expect(letter.id).toBe(expectedLetterIdSeq[idx]);
+
+          expect(letter.title).toBe(testTitle);
+          expect(letter.payload).toBe(testPayload);
+          expect(letter.emotion).toBe(testEmotion);
+          expect(letter.isTimeCapsule).toBe(Boolean(idx % 2));
+          expect(letter.isTemp).toBe(!Boolean(idx % 2));
+          expect(letter.isRead).toBe(false);
+          expect(letter.kept).toBe(false);
+        });
+      });
+
+    // 엔티티 정리
+    const res = await letterRepository.delete({
+      id: In([testLetterId1, testLetterId2, testLetterId3]),
+    });
+
+    expect(res.affected).toBe(3);
   });
 
-  it('find letter box - RECEIVED & ALL', async () => {
-    throw new Error('Not implemented.');
+  it('find letter box - ALL & RECEIVED', async () => {
+    // given
+    const letterFragment: QueryDeepPartialEntity<Letter> = {
+      title: testTitle,
+      payload: testPayload,
+      emotion: testEmotion,
+      receiver: { id: TEST_USER_ID },
+      isTemp: false,
+      kept: false,
+    };
+
+    const {
+      raw: { insertId: testLetterId1 },
+    } = await letterRepository.insert({
+      ...letterFragment,
+      sender: { id: TEST_FAMILY_USER_ID1 },
+      isTimeCapsule: false,
+      receiveDate: new Date(new Date().getTime() - 1000 * 60 * 3), // mysql에 ms 단위 날아가서 오류 발생하는 것 방지
+    });
+
+    const {
+      raw: { insertId: testLetterId2 },
+    } = await letterRepository.insert({
+      ...letterFragment,
+      sender: { id: TEST_FAMILY_USER_ID1 },
+      isTimeCapsule: false,
+      receiveDate: new Date(new Date().getTime() - 1000 * 60 * 2), // mysql에 ms 단위 날아가서 오류 발생하는 것 방지
+    });
+
+    const {
+      raw: { insertId: testLetterId3 },
+    } = await letterRepository.insert({
+      ...letterFragment,
+      sender: { id: TEST_FAMILY_USER_ID2 },
+      isTimeCapsule: true,
+      receiveDate: new Date(new Date().getTime() + 1000 * 60 * 60 * 24 * 5),
+    });
+
+    const take = 2;
+    const prev = 0;
+
+    const expectedLetterIdSeq = [testLetterId2, testLetterId1];
+
+    // when
+    const query = `
+      query {
+        findLetterBox(type: ${LetterType.RECEIVED}, boxType: ${LetterBoxType.ALL}, take: ${take}, prev: ${prev}) {
+            result
+            error
+            letters {
+              id
+              title
+              payload
+              emotion
+              sender {
+                id
+                userName
+              }
+              receiverId
+              isTimeCapsule
+              receiveDate
+              isTemp
+              isRead
+              kept
+            }
+        }
+      }
+    `;
+
+    await gqlAuthReq(app, query)
+      .expect(200)
+      .expect((res: { body: { data: { findLetterBox: LetterBoxResDTO } } }) => {
+        const {
+          body: {
+            data: {
+              findLetterBox: { result, error, letters },
+            },
+          },
+        } = res;
+
+        // then
+        expect(result).toBe(true);
+        expect(error).toBeNull();
+        expect(letters.length).toBe(take);
+
+        letters.forEach((letter, idx) => {
+          expect(letter.id).toBe(expectedLetterIdSeq[idx]);
+
+          expect(letter.title).toBe(testTitle);
+          expect(letter.payload).toBe(testPayload);
+          expect(letter.emotion).toBe(testEmotion);
+          expect(letter.isTimeCapsule).toBe(false);
+          expect(letter.isTemp).toBe(false);
+          expect(letter.isRead).toBe(false);
+          expect(letter.kept).toBe(false);
+        });
+      });
+
+    // 엔티티 정리
+    const res = await letterRepository.delete({
+      id: In([testLetterId1, testLetterId2, testLetterId3]),
+    });
+
+    expect(res.affected).toBe(3);
   });
 
-  it('find letter box - RECEIVED & Time Capsule Only', async () => {
-    throw new Error('Not implemented.');
+  it('find letter box - Time Capsule Only & SENT', async () => {
+    // given
+    const letterFragment: QueryDeepPartialEntity<Letter> = {
+      title: testTitle,
+      payload: testPayload,
+      emotion: testEmotion,
+      sender: { id: TEST_USER_ID },
+      isTemp: false,
+      kept: false,
+    };
+
+    const {
+      raw: { insertId: testLetterId1 },
+    } = await letterRepository.insert({
+      ...letterFragment,
+      receiver: { id: TEST_FAMILY_USER_ID1 },
+      isTimeCapsule: true,
+      receiveDate: new Date(new Date().getTime() + 1000 * 60 * 60 * 24 * 10), // 더 늦게 도착 TC (10일 뒤)
+    });
+
+    const {
+      raw: { insertId: testLetterId2 },
+    } = await letterRepository.insert({
+      ...letterFragment,
+      receiver: { id: TEST_FAMILY_USER_ID1 },
+      isTimeCapsule: false,
+      receiveDate: new Date(new Date().getTime() - 1000 * 60 * 2), // mysql에 ms 단위 날아가서 오류 발생하는 것 방지
+    });
+
+    const {
+      raw: { insertId: testLetterId3 },
+    } = await letterRepository.insert({
+      ...letterFragment,
+      receiver: { id: TEST_FAMILY_USER_ID2 },
+      isTimeCapsule: true,
+      receiveDate: new Date(new Date().getTime() + 1000 * 60 * 60 * 24 * 5), // 더 일찍 도착 (5일 뒤)
+    });
+
+    const take = 2;
+    const prev = 0;
+
+    const expectedLetterIdSeq = [testLetterId1, testLetterId3];
+
+    // when
+    const query = `
+        query {
+          findLetterBox(type: ${LetterType.SENT}, boxType: ${LetterBoxType.TIME_CAPSULE}, take: ${take}, prev: ${prev}) {
+              result
+              error
+              letters {
+                id
+                title
+                payload
+                emotion
+                senderId
+                receiver {
+                  id
+                  userName
+                }
+                isTimeCapsule
+                receiveDate
+                isTemp
+                isRead
+                kept
+              }
+          }
+        }
+      `;
+
+    await gqlAuthReq(app, query)
+      .expect(200)
+      .expect((res: { body: { data: { findLetterBox: LetterBoxResDTO } } }) => {
+        const {
+          body: {
+            data: {
+              findLetterBox: { result, error, letters },
+            },
+          },
+        } = res;
+
+        // then
+        expect(result).toBe(true);
+        expect(error).toBeNull();
+        expect(letters.length).toBe(take);
+
+        letters.forEach((letter, idx) => {
+          expect(letter.id).toBe(expectedLetterIdSeq[idx]);
+
+          expect(letter.title).toBe(testTitle);
+          expect(letter.payload).toBe(testPayload);
+          expect(letter.emotion).toBe(testEmotion);
+          expect(letter.isTimeCapsule).toBe(true);
+          expect(letter.isTemp).toBe(false);
+          expect(letter.isRead).toBe(false);
+          expect(letter.kept).toBe(false);
+        });
+      });
+
+    // 엔티티 정리
+    const res = await letterRepository.delete({
+      id: In([testLetterId1, testLetterId2, testLetterId3]),
+    });
+
+    expect(res.affected).toBe(3);
   });
 
-  it('find letter box - RECEIVED & Kept', async () => {
-    throw new Error('Not implemented.');
+  it('find letter box - Time Capsule Only & RECEIVED', async () => {
+    // given
+    const letterFragment: QueryDeepPartialEntity<Letter> = {
+      title: testTitle,
+      payload: testPayload,
+      emotion: testEmotion,
+      receiver: { id: TEST_USER_ID },
+      isTemp: false,
+      kept: false,
+    };
+
+    const {
+      raw: { insertId: testLetterId1 },
+    } = await letterRepository.insert({
+      ...letterFragment,
+      sender: { id: TEST_FAMILY_USER_ID1 },
+      isTimeCapsule: true,
+      receiveDate: new Date(new Date().getTime() + 1000 * 60 * 60 * 24 * 10), // 더 늦게 도착 TC (10일 뒤)
+    });
+
+    const {
+      raw: { insertId: testLetterId2 },
+    } = await letterRepository.insert({
+      ...letterFragment,
+      sender: { id: TEST_FAMILY_USER_ID1 },
+      isTimeCapsule: false,
+      receiveDate: new Date(new Date().getTime() - 1000 * 60 * 2), // mysql에 ms 단위 날아가서 오류 발생하는 것 방지
+    });
+
+    const {
+      raw: { insertId: testLetterId3 },
+    } = await letterRepository.insert({
+      ...letterFragment,
+      sender: { id: TEST_FAMILY_USER_ID2 },
+      isTimeCapsule: true,
+      receiveDate: new Date(new Date().getTime() + 1000 * 60 * 60 * 24 * 5), // 더 일찍 도착 (5일 뒤)
+    });
+
+    const take = 2;
+    const prev = 0;
+
+    const expectedLetterIdSeq = [testLetterId1, testLetterId3];
+
+    // when
+    const query = `
+      query {
+        findLetterBox(type: ${LetterType.RECEIVED}, boxType: ${LetterBoxType.TIME_CAPSULE}, take: ${take}, prev: ${prev}) {
+            result
+            error
+            letters {
+              id
+              title
+              payload
+              emotion
+              sender {
+                id
+                userName
+              }
+              receiverId
+              isTimeCapsule
+              receiveDate
+              isTemp
+              isRead
+              kept
+            }
+        }
+      }
+    `;
+
+    await gqlAuthReq(app, query)
+      .expect(200)
+      .expect((res: { body: { data: { findLetterBox: LetterBoxResDTO } } }) => {
+        const {
+          body: {
+            data: {
+              findLetterBox: { result, error, letters },
+            },
+          },
+        } = res;
+
+        // then
+        expect(result).toBe(true);
+        expect(error).toBeNull();
+        expect(letters.length).toBe(take);
+
+        letters.forEach((letter, idx) => {
+          expect(letter.id).toBe(expectedLetterIdSeq[idx]);
+
+          expect(letter.title).toBe(testTitle);
+          expect(letter.payload).toBe(testPayload);
+          expect(letter.emotion).toBe(testEmotion);
+          expect(letter.isTimeCapsule).toBe(true);
+          expect(letter.isTemp).toBe(false);
+          expect(letter.isRead).toBe(false);
+          expect(letter.kept).toBe(false);
+        });
+      });
+
+    // 엔티티 정리
+    const res = await letterRepository.delete({
+      id: In([testLetterId1, testLetterId2, testLetterId3]),
+    });
+
+    expect(res.affected).toBe(3);
   });
 
-  it('find letter box - RECEIVED, receiver 아닌 경우 에러', async () => {
-    throw new Error('Not implemented.');
+  it('find letter box - KEPT (RECEIVED)', async () => {
+    // given
+    const letterFragment: QueryDeepPartialEntity<Letter> = {
+      title: testTitle,
+      payload: testPayload,
+      emotion: testEmotion,
+      receiver: { id: TEST_USER_ID },
+      isTemp: false,
+      isTimeCapsule: false,
+      isRead: true,
+    };
+
+    const {
+      raw: { insertId: testLetterId1 },
+    } = await letterRepository.insert({
+      ...letterFragment,
+      sender: { id: TEST_FAMILY_USER_ID1 },
+      receiveDate: new Date(new Date().getTime() - 1000 * 60 * 3), // mysql에 ms 단위 날아가서 오류 발생하는 것 방지
+      kept: true,
+    });
+
+    const {
+      raw: { insertId: testLetterId2 },
+    } = await letterRepository.insert({
+      ...letterFragment,
+      sender: { id: TEST_FAMILY_USER_ID1 },
+      receiveDate: new Date(new Date().getTime() - 1000 * 60 * 2), // mysql에 ms 단위 날아가서 오류 발생하는 것 방지
+      kept: true,
+    });
+
+    const {
+      raw: { insertId: testLetterId3 },
+    } = await letterRepository.insert({
+      ...letterFragment,
+      sender: { id: TEST_FAMILY_USER_ID2 },
+      receiveDate: new Date(new Date().getTime() - 1000 * 60 * 1), // mysql에 ms 단위 날아가서 오류 발생하는 것 방지
+      kept: false,
+    });
+
+    const take = 2;
+    const prev = 0;
+
+    const expectedLetterIdSeq = [testLetterId2, testLetterId1];
+
+    // when
+    const query = `
+      query {
+        findLetterBox(type: ${LetterType.RECEIVED}, boxType: ${LetterBoxType.KEPT}, take: ${take}, prev: ${prev}) {
+            result
+            error
+            letters {
+              id
+              title
+              payload
+              emotion
+              sender {
+                id
+                userName
+              }
+              receiverId
+              isTimeCapsule
+              receiveDate
+              isTemp
+              isRead
+              kept
+            }
+        }
+      }
+    `;
+
+    await gqlAuthReq(app, query)
+      .expect(200)
+      .expect((res: { body: { data: { findLetterBox: LetterBoxResDTO } } }) => {
+        const {
+          body: {
+            data: {
+              findLetterBox: { result, error, letters },
+            },
+          },
+        } = res;
+
+        // then
+        expect(result).toBe(true);
+        expect(error).toBeNull();
+        expect(letters.length).toBe(take);
+
+        letters.forEach((letter, idx) => {
+          expect(letter.id).toBe(expectedLetterIdSeq[idx]);
+
+          expect(letter.title).toBe(testTitle);
+          expect(letter.payload).toBe(testPayload);
+          expect(letter.emotion).toBe(testEmotion);
+          expect(letter.isTimeCapsule).toBe(false);
+          expect(letter.isTemp).toBe(false);
+          expect(letter.isRead).toBe(true);
+          expect(letter.kept).toBe(true);
+        });
+      });
+
+    // 엔티티 정리
+    const res = await letterRepository.delete({
+      id: In([testLetterId1, testLetterId2, testLetterId3]),
+    });
+
+    expect(res.affected).toBe(3);
+  });
+
+  it('find letter box - KEPT - SENT 요청 에러 테스트', async () => {
+    const query = `
+      query {
+        findLetterBox(type: ${LetterType.SENT}, boxType: ${LetterBoxType.KEPT}) {
+            result
+            error
+            letters {
+              id
+              title
+            }
+        }
+      }
+    `;
+
+    await gqlAuthReq(app, query)
+      .expect(200)
+      .expect((res: { body: { data: { findLetterBox: LetterBoxResDTO } } }) => {
+        const {
+          body: {
+            data: {
+              findLetterBox: { result, error, letters },
+            },
+          },
+        } = res;
+
+        // then
+        expect(result).toBe(false);
+        expect(error).toBe(
+          'Request with invalid letter type. (No Kept letter box for SENT)',
+        );
+        expect(letters).toBeNull();
+      });
   });
 
   it('edit letter kept - keep', async () => {
     // given
-    const testTitle = 'test title';
-    const testPayload = 'test payload';
-    const testEmotion = LetterEmotionType.happy;
     const testSenderId = TEST_FAMILY_USER_ID1;
 
     const testLetter = await letterRepository.insert({
@@ -1027,9 +1927,6 @@ describe('Letter module (e2e)', () => {
 
   it('edit letter kept - unkeep', async () => {
     // given
-    const testTitle = 'test title';
-    const testPayload = 'test payload';
-    const testEmotion = LetterEmotionType.happy;
     const testSenderId = TEST_FAMILY_USER_ID1;
 
     const testLetter = await letterRepository.insert({
@@ -1091,9 +1988,6 @@ describe('Letter module (e2e)', () => {
 
   it('edit letter kept - receiver 아닌 경우 에러', async () => {
     // given
-    const testTitle = 'test title';
-    const testPayload = 'test payload';
-    const testEmotion = LetterEmotionType.happy;
     const testReceiverId = TEST_FAMILY_USER_ID1;
 
     const testLetter = await letterRepository.insert({

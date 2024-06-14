@@ -248,6 +248,9 @@ export class LetterService {
     }
   }
 
+  // sendLetter에서는 가족한테만 보낼 수 있는지 확인하지만,
+  // findLetter는 자신한테 온 편지는 전부 볼 수 있도록 sender 가족 체크 하지 않음
+  // 가족이었다가 탈퇴한 회원, 가족을 바꾼 회원 등에게 받은 편지도 계속 확인할 수 있도록 정책 구성
   async findLetter(
     { userId }: AuthUserId,
     { id, type }: LetterReqDTO,
@@ -259,14 +262,14 @@ export class LetterService {
         case LetterType.SENT:
           query
             .leftJoinAndSelect('letter.receiver', 'receiver')
-            .where('id = :id', { id })
+            .where('letter.id = :id', { id })
             .andWhere('letter.sender.id = :userId', { userId });
           break;
 
         case LetterType.RECEIVED:
           query
             .leftJoinAndSelect('letter.sender', 'sender')
-            .where('id = :id', { id })
+            .where('letter.id = :id', { id })
             .andWhere('letter.receiver.id = :userId', { userId });
           break;
 
@@ -287,67 +290,153 @@ export class LetterService {
     { type, boxType, take, prev }: LetterBoxReqDTO,
   ): Promise<LetterBoxResDTO> {
     try {
-      const tcMaxDate = new Date(
-        new Date().getTime() - 1000 * 60 * 60 * 24 * 3,
-      );
+      let res: LetterBoxResDTO;
 
+      // box type 기준으로 1차 분기 (각 메서드 안에서 letter type으로 2차 분기)
+      switch (boxType) {
+        case LetterBoxType.ALL:
+          res = await this.findLetterAllBox(userId, type, take, prev);
+          break;
+
+        case LetterBoxType.TIME_CAPSULE:
+          res = await this.findTimeCapsuleBox(userId, type, take, prev);
+          break;
+
+        case LetterBoxType.KEPT:
+          res = await this.findLetterKeptBox(userId, type, take, prev);
+          break;
+
+        default:
+          throw new Error('Request with invalid box type.');
+      }
+
+      return res;
+    } catch (e) {
+      return { result: false, error: e.message };
+    }
+  }
+
+  async findLetterAllBox(
+    userId: number,
+    type: LetterType,
+    take: number,
+    prev: number,
+  ): Promise<LetterBoxResDTO> {
+    try {
       const query = this.letterRepository.createQueryBuilder('letter').select();
 
       switch (type) {
         case LetterType.SENT:
           query
             .leftJoinAndSelect('letter.receiver', 'receiver')
-            .leftJoinAndSelect(
-              'letter.sender',
-              'sender',
-              'sender.id = :userId',
-              { userId },
-            )
-            .orderBy('updatedAt', 'DESC');
+            .where('letter.senderId = :userId', { userId })
+            .orderBy('isTemp', 'DESC')
+            .addOrderBy('letter.updatedAt', 'DESC')
+            .addOrderBy('letter.id', 'DESC');
           break;
 
         case LetterType.RECEIVED:
           query
-            .leftJoinAndSelect(
-              'letter.receiver',
-              'receiver',
-              'receiver.id = :userId',
-              { userId },
-            )
             .leftJoinAndSelect('letter.sender', 'sender')
-            .orderBy('receiveDate', 'DESC');
-          break;
-        default:
-          throw new Error('Invalid letter type requested.');
-      }
-
-      switch (boxType) {
-        case LetterBoxType.ALL:
-          query.where('receiveDate <= :now', { now: new Date() });
-          break;
-
-        case LetterBoxType.TIME_CAPSULE:
-          query
-            .where('isTimeCapsule = :isTC', { isTC: true })
-            .andWhere('receiveDate >= :tcMaxDate', { tcMaxDate });
-
-          if (type === LetterType.SENT) {
-            query.andWhere;
-          }
-          break;
-
-        case LetterBoxType.KEPT:
-          query.where('letter.kept = :kept', { kept: true });
+            .where('letter.receiverId = :userId', { userId })
+            .andWhere('receiveDate <= :now', { now: new Date() })
+            .orderBy('receiveDate', 'DESC')
+            .addOrderBy('letter.id', 'DESC');
           break;
 
         default:
-          throw new Error('Invalid box type requested.');
+          throw new Error('Request with invalid letter type.');
       }
 
       const letters = await query
-        .skip(take * prev)
-        .take(take)
-        .execute();
+        .offset(take * prev)
+        .limit(take)
+        .getMany();
+
+      return { result: true, letters };
+    } catch (e) {
+      return { result: false, error: e.message };
+    }
+  }
+
+  async findTimeCapsuleBox(
+    userId: number,
+    type: LetterType,
+    take: number,
+    prev: number,
+  ): Promise<LetterBoxResDTO> {
+    try {
+      const query = this.letterRepository.createQueryBuilder('letter').select();
+
+      switch (type) {
+        case LetterType.SENT:
+          query
+            .leftJoinAndSelect('letter.receiver', 'receiver')
+            .where('letter.senderId = :userId', { userId })
+            .andWhere('isTimeCapsule = true')
+            .andWhere('isTemp = false')
+            .orderBy('receiveDate', 'DESC')
+            .addOrderBy('letter.updatedAt', 'DESC')
+            .addOrderBy('letter.id', 'DESC');
+          break;
+
+        case LetterType.RECEIVED:
+          query
+            .leftJoinAndSelect('letter.sender', 'sender')
+            .where('letter.receiverId = :userId', { userId })
+            .andWhere('isTimeCapsule = true')
+            .orderBy('receiveDate', 'DESC')
+            .addOrderBy('letter.id', 'DESC');
+          break;
+
+        default:
+          throw new Error('Request with invalid letter type.');
+      }
+
+      const letters = await query
+        .offset(take * prev)
+        .limit(take)
+        .getMany();
+
+      return { result: true, letters };
+    } catch (e) {
+      return { result: false, error: e.message };
+    }
+  }
+
+  async findLetterKeptBox(
+    userId: number,
+    type: LetterType,
+    take: number,
+    prev: number,
+  ): Promise<LetterBoxResDTO> {
+    try {
+      const query = this.letterRepository.createQueryBuilder('letter').select();
+
+      switch (type) {
+        case LetterType.RECEIVED:
+          query
+            .leftJoinAndSelect('letter.sender', 'sender')
+            .where('letter.receiverId = :userId', { userId })
+            .andWhere('receiveDate <= :now', { now: new Date() })
+            .andWhere('letter.kept = true')
+            .andWhere('letter.isRead = true')
+            .orderBy('receiveDate', 'DESC');
+          break;
+
+        case LetterType.SENT:
+          throw new Error(
+            'Request with invalid letter type. (No Kept letter box for SENT)',
+          );
+
+        default:
+          throw new Error('Request with invalid letter type.');
+      }
+
+      const letters = await query
+        .offset(take * prev)
+        .limit(take)
+        .getMany();
 
       return { result: true, letters };
     } catch (e) {
