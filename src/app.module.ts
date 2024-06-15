@@ -39,7 +39,6 @@ import { FamilyPediaQuestion } from './family-pedia/entities/family-pedia-questi
 import { DailyEmotionModule } from './daily-emotion/daily-emotion.module';
 import { SqsNotificationModule } from './sqs-notification/sqs-notification.module';
 import { EventEmitterModule } from '@nestjs/event-emitter';
-import { DynamoModule } from './dynamo/dynamo.module';
 import { SchedulerModule } from './scheduler/scheduler.module';
 import { DAU } from './admin/entities/dau.entity';
 import { MAU } from './admin/entities/mau.entity';
@@ -103,7 +102,6 @@ import { RedisFamilyMemberModule } from './redis-family-member/redis-family-memb
     InquiryModule,
     DailyEmotionModule,
     SqsNotificationModule,
-    DynamoModule,
     SchedulerModule,
     RedisFamilyMemberModule,
   ],

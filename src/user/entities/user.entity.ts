@@ -18,9 +18,9 @@ export class User extends CoreEntity {
   @Field(() => AuthProvider)
   provider: AuthProvider;
 
-  @Column()
-  @Field()
-  fcmToken: string;
+  @Column({ nullable: true })
+  @Field({ nullable: true })
+  fcmToken?: string;
 
   @Column()
   @Field()

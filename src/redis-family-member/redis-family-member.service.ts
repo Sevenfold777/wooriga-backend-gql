@@ -39,7 +39,7 @@ export class RedisFamilyMemberService implements OnModuleDestroy {
   }
 
   @CustomValidate(RedisDeleteFamilyReqDTO)
-  async deleteFamily({ familyId }: RedisDeleteFamilyReqDTO): Promise<void> {
+  async deleteFamilyItem({ familyId }: RedisDeleteFamilyReqDTO): Promise<void> {
     try {
       const familyKey = this.formatFamilyIdKey(familyId);
 
@@ -50,12 +50,18 @@ export class RedisFamilyMemberService implements OnModuleDestroy {
       // (item이 여러 개여도 그 수가 적다면 성능 상 문제가 마약하기에 del과 동일하게 동작할 수 있음)
       await this.redis.unlink(familyKey);
     } catch (e) {
-      console.error('Failed to unlink family to redis family member table.', e);
+      console.error(
+        'Failed to unlink family from redis family member table.',
+        e,
+      );
     }
   }
 
   @CustomValidate(RedisDeleteUserReqDTO)
-  async deleteUser({ familyId, userId }: RedisDeleteUserReqDTO): Promise<void> {
+  async deleteUserItem({
+    familyId,
+    userId,
+  }: RedisDeleteUserReqDTO): Promise<void> {
     try {
       const familyKey = this.formatFamilyIdKey(familyId);
       const userKey = this.formatUserIdKey(userId);
@@ -66,7 +72,7 @@ export class RedisFamilyMemberService implements OnModuleDestroy {
       // 서비스의 특성상 하나의 family에 한 자리 수의 매우 적은 user가 할당되므로 O(1)이라고 볼 수 있음
       await this.redis.hdel(familyKey, userKey);
     } catch (e) {
-      console.error('Failed to unlink item to redis family member table.', e);
+      console.error('Failed to unlink user from redis family member table.', e);
     }
   }
 

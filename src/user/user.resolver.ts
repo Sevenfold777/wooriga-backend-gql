@@ -42,6 +42,11 @@ export class UserResolver {
     return this.userService.signIn(signInReqDTO);
   }
 
+  @Mutation(() => BaseResponseDTO)
+  signOut(@AuthUser() user: AuthUserId): Promise<BaseResponseDTO> {
+    return this.userService.signOut(user);
+  }
+
   @Public()
   @Mutation(() => SignInResDTO)
   refreshToken(
@@ -53,5 +58,13 @@ export class UserResolver {
   @Mutation(() => BaseResponseDTO)
   withdraw(@AuthUser() user: AuthUserId): Promise<BaseResponseDTO> {
     return this.userService.withdraw(user);
+  }
+
+  @Mutation(() => BaseResponseDTO)
+  fcmTokenUpdate(
+    @AuthUser() user: AuthUserId,
+    @Args('fcmToken') fcmToken: string,
+  ): Promise<BaseResponseDTO> {
+    return this.userService.fcmTokenUpdate(user, fcmToken);
   }
 }

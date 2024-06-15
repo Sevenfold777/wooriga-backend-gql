@@ -19,6 +19,12 @@ import { FamilyService } from 'src/family/family.service';
 import { SignInRejectType } from './constants/sign-in-reject-type.enum';
 import { FamilyPediaService } from 'src/family-pedia/family-pedia.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import {
+  USER_FCM_UPDATED_EVENT,
+  USER_SIGN_OUT_EVENT,
+  USER_UPDATE_EVENT,
+  USER_WITHDRAW_EVENT,
+} from 'src/common/constants/events';
 
 @Injectable()
 export class UserService {
@@ -196,7 +202,7 @@ export class UserService {
         .getOneOrFail();
 
       // TODO: fire user.updated event
-      this.eventEmitter.emit('user.updated', userUpdated);
+      this.eventEmitter.emit(USER_UPDATE_EVENT, userUpdated);
 
       return { result: true, user: userUpdated };
     } catch (e) {
@@ -255,13 +261,47 @@ export class UserService {
         user.familyId,
       );
 
-      return { result: true, accessToken, refreshToken };
+      return { result: true, accessToken, refreshToken, user };
     } catch (e) {
       return {
         result: false,
         rejectType: SignInRejectType.ETC,
         error: e.message,
       };
+    }
+  }
+
+  async signOut({ userId, familyId }: AuthUserId): Promise<BaseResponseDTO> {
+    try {
+      const updateUserResult = await this.userRepository
+        .createQueryBuilder('user')
+        .update()
+        .where('user.id = :userId', { userId })
+        .set({ fcmToken: null })
+        .updateEntity(false)
+        .execute();
+
+      if (updateUserResult.affected !== 1) {
+        throw new Error('User update failed.');
+      }
+
+      const updateAuthResult = await this.userAuthRepository
+        .createQueryBuilder('auth')
+        .update()
+        .where('user.id = :userId', { userId })
+        .set({ refreshToken: null })
+        .updateEntity(false)
+        .execute();
+
+      if (updateAuthResult.affected !== 1) {
+        throw new Error('UserAuth update failed.');
+      }
+
+      this.eventEmitter.emit(USER_SIGN_OUT_EVENT, { familyId, userId });
+
+      return { result: true };
+    } catch (e) {
+      return { result: false, error: e.message };
     }
   }
 
@@ -314,7 +354,7 @@ export class UserService {
    * 사용자 60일 뒤 계정 hard delete 시
    * DB 단에서 onDelete Cascade 진행
    */
-  async withdraw({ userId }: AuthUserId): Promise<BaseResponseDTO> {
+  async withdraw({ familyId, userId }: AuthUserId): Promise<BaseResponseDTO> {
     const queryRunner = this.dataSource.createQueryRunner();
 
     queryRunner.connect();
@@ -335,6 +375,8 @@ export class UserService {
       if (userResult.affected !== 1) {
         throw new Error('Cannot update user status to DELETED.');
       }
+
+      this.eventEmitter.emit(USER_WITHDRAW_EVENT, { familyId, userId });
 
       await queryRunner.commitTransaction();
 
@@ -380,5 +422,41 @@ export class UserService {
     }
 
     return { accessToken, refreshToken };
+  }
+
+  async fcmTokenUpdate(
+    { userId }: AuthUserId,
+    fcmTokenToUpdate: string,
+  ): Promise<BaseResponseDTO> {
+    try {
+      const user = await this.userRepository
+        .createQueryBuilder('user')
+        .select()
+        .where('user.id = :userId', { userId })
+        .getOneOrFail();
+
+      if (user.fcmToken === fcmTokenToUpdate) {
+        throw new Error('Unnecessary request for update fcm token.');
+      }
+
+      const updateResult = await this.userRepository
+        .createQueryBuilder('user')
+        .update()
+        .where('user.id = :userId', { userId })
+        .set({ fcmToken: fcmTokenToUpdate })
+        .updateEntity(false)
+        .execute();
+
+      if (updateResult.affected !== 1) {
+        throw new Error('Cannot update fcm token.');
+      }
+
+      user.fcmToken = fcmTokenToUpdate;
+      this.eventEmitter.emit(USER_FCM_UPDATED_EVENT, user);
+
+      return { result: true };
+    } catch (e) {
+      return { result: false, error: e.message };
+    }
   }
 }

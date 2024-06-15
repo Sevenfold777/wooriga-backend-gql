@@ -10,6 +10,7 @@ import {
 import { SqsNotificationProduceDTO } from './dto/sqs-notification-produce.dto';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { NotificationType } from './constants/notification-type';
+import { SQS_NOTIFICATION_STORE_RECEIVE_EVENT } from 'src/common/constants/events';
 
 @Injectable()
 export class SqsNotificationService {
@@ -69,7 +70,7 @@ export class SqsNotificationService {
 
       // SQS receiver와 알림 저장 비즈니스 로직을 decouple (SqsService는 여러 모듈에 inject 될 것이기 때문)
       this.eventEmitter.emit(
-        'sqs.notification.payload.received',
+        SQS_NOTIFICATION_STORE_RECEIVE_EVENT,
         messagesReceived.map((message) => JSON.parse(message.Body)), // message body has to be JSON
       );
 

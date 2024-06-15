@@ -1,4 +1,4 @@
-import { DynamoUserService } from './../dynamo/dynamo-user.service';
+import { RedisFamilyMemberService } from './../redis-family-member/redis-family-member.service';
 import { Injectable } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { CreateNotificationReqDTO } from './dto/create-notification-req.dto';
@@ -11,20 +11,29 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Notification } from './entities/notification.entity';
 import { Repository } from 'typeorm';
 import { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
-import { DynamoUser } from 'src/dynamo/entities/dynamo-user.entity';
-import { UserStatus } from 'src/user/constants/user-status.enum';
 import { User } from 'src/user/entities/user.entity';
-import { DynamoEditFamilyIdReqDTO } from 'src/dynamo/dto/dynamo-edit-familyId-req.dto';
+import { RedisFamilyMember } from 'src/redis-family-member/entities/redis-family-member.entity';
+import { RedisDeleteUserReqDTO } from 'src/redis-family-member/dto/redis-delete-user-req.dto';
+import {
+  FAMILY_JOIN_EVENT,
+  SQS_NOTIFICATION_STORE_RECEIVE_EVENT,
+  USER_FCM_UPDATED_EVENT,
+  USER_SIGN_OUT_EVENT,
+  USER_UPDATE_EVENT,
+  USER_WITHDRAW_EVENT,
+} from 'src/common/constants/events';
 
 @Injectable()
 export class NotificationService {
   constructor(
     @InjectRepository(Notification)
     private notificationRepository: Repository<Notification>,
-    private readonly dynamoUserService: DynamoUserService,
+    @InjectRepository(User)
+    private userRepository: Repository<User>,
+    private readonly redisFamilyMemberService: RedisFamilyMemberService,
   ) {}
 
-  @OnEvent('sqs.notification.payload.received')
+  @OnEvent(SQS_NOTIFICATION_STORE_RECEIVE_EVENT)
   @CustomValidate(CreateNotificationReqDTO)
   private async handleNotificationStore(
     notifList: CreateNotificationReqDTO[],
@@ -58,28 +67,70 @@ export class NotificationService {
     }
   }
 
-  @OnEvent('user.updated')
-  private async handleUserUpdate(user: User): Promise<void> {
-    // 에러 핸들링은 dynamoUserService에서 진행
+  /*
+   * @OnEvent('user.signIn') => 사용하지 않음
+   * 앱에서 signIn 성공 이후, 필요에 따라 fcmToken 업데이트 요청을 진행
+   * 따라서 fcmToken 업데이트 시 이벤트 트리거 (signIn은 fcmToken Update의 선행 조건)
+   */
+  @OnEvent(USER_UPDATE_EVENT)
+  @OnEvent(USER_FCM_UPDATED_EVENT)
+  private async handleSetUserItem(user: User): Promise<void> {
+    try {
+      const redisFamilyMember = new RedisFamilyMember();
+      redisFamilyMember.familyId = user.familyId;
+      redisFamilyMember.userId = user.id;
+      redisFamilyMember.userName = user.userName;
+      redisFamilyMember.mktPushAgreed = user.mktPushAgreed;
+      redisFamilyMember.fcmToken = user.fcmToken;
 
-    const dynamoUser = new DynamoUser();
-    dynamoUser.id = user.id;
-    dynamoUser.userName = user.userName;
-    dynamoUser.familyId = user.familyId;
-    dynamoUser.mktPushAgreed = user.mktPushAgreed;
-    dynamoUser.fcmToken = user.fcmToken;
-    dynamoUser.status = UserStatus.ACTIVE;
-
-    return this.dynamoUserService.putItem(dynamoUser);
+      return this.redisFamilyMemberService.setItem(redisFamilyMember);
+    } catch (e) {
+      console.error(e.message);
+    }
   }
 
-  @OnEvent('family.joined')
+  @OnEvent(FAMILY_JOIN_EVENT)
+  @CustomValidate(RedisDeleteUserReqDTO)
   private async handleFamilyJoined({
-    userId,
     familyId,
-  }: DynamoEditFamilyIdReqDTO): Promise<void> {
-    // 에러 핸들링은 dynamoUserService에서 진행
-    return this.dynamoUserService.updateFamilyId({ userId, familyId });
+    userId,
+  }: RedisDeleteUserReqDTO): Promise<void> {
+    try {
+      const user = await this.userRepository
+        .createQueryBuilder('user')
+        .select()
+        .where('id = :userId', { userId })
+        .getOneOrFail();
+
+      const redisFamilyMember = new RedisFamilyMember();
+      redisFamilyMember.familyId = user.familyId;
+      redisFamilyMember.userId = user.id;
+      redisFamilyMember.userName = user.userName;
+      redisFamilyMember.mktPushAgreed = user.mktPushAgreed;
+      redisFamilyMember.fcmToken = user.fcmToken;
+
+      // 기존 hash map field 삭제, set new item
+      await Promise.all([
+        this.redisFamilyMemberService.deleteUserItem({ familyId, userId }),
+        this.redisFamilyMemberService.setItem(redisFamilyMember),
+      ]);
+    } catch (e) {
+      console.error(e.message);
+    }
+  }
+
+  @OnEvent(USER_SIGN_OUT_EVENT)
+  @OnEvent(USER_WITHDRAW_EVENT)
+  @CustomValidate(RedisDeleteUserReqDTO)
+  private async handleDeleteUserItem({
+    familyId,
+    userId,
+  }: RedisDeleteUserReqDTO): Promise<void> {
+    try {
+      await this.redisFamilyMemberService.deleteUserItem({ familyId, userId });
+    } catch (e) {
+      console.error(e);
+    }
   }
 
   async findNotifications(

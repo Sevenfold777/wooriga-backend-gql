@@ -11,6 +11,7 @@ import { User } from 'src/user/entities/user.entity';
 import { FamilyResDTO } from './dto/family-res.dto';
 import { CreateResDTO } from 'src/common/dto/create-res.dto';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { FAMILY_JOIN_EVENT } from 'src/common/constants/events';
 
 @Injectable()
 export class FamilyService {
@@ -152,9 +153,9 @@ export class FamilyService {
       //   await queryRunner.rollbackTransaction(); // for test
       await queryRunner.commitTransaction();
 
-      this.eventEmitter.emit('family.joined', {
+      this.eventEmitter.emit(FAMILY_JOIN_EVENT, {
         userId,
-        familyId: familyToJoin,
+        familyId: familyToBeMerged,
       });
 
       return { result: true };
