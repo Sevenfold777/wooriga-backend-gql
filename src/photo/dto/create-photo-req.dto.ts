@@ -1,5 +1,5 @@
-import { ArgsType, Field } from '@nestjs/graphql';
-import { IsNotEmpty, IsString } from 'class-validator';
+import { ArgsType, Field, Int } from '@nestjs/graphql';
+import { IsNotEmpty, IsNumber, IsString, Max, Min } from 'class-validator';
 
 @ArgsType()
 export class CreatePhotoReqDTO {
@@ -12,4 +12,10 @@ export class CreatePhotoReqDTO {
   @IsNotEmpty()
   @IsString()
   payload: string;
+
+  @Field(() => Int)
+  @IsNumber()
+  @Min(1)
+  @Max(10)
+  filesCount: number;
 }

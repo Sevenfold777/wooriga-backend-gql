@@ -22,6 +22,12 @@ import * as DataLoader from 'dataloader';
 import { PhotoCommentMetaDataDTO } from './dto/photo-comment-metadata.dto';
 import { SqsNotificationProduceDTO } from 'src/sqs-notification/dto/sqs-notification-produce.dto';
 import { NotificationType } from 'src/sqs-notification/constants/notification-type';
+import { CreatePhotoReqDTO } from './dto/create-photo-req.dto';
+import { CreatePhotoResDTO } from './dto/create-photo-res.dto';
+import { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
+import { S3Service } from 'src/s3/s3.service';
+import { S3Directory } from 'src/s3/constants/s3-directory.enum';
+import { GetPresignedUrlResDTO } from 'src/s3/dto/get-presigned-url-res.dto';
 
 @Injectable()
 export class PhotoService {
@@ -33,7 +39,85 @@ export class PhotoService {
     @InjectRepository(PhotoComment)
     private commentRepository: Repository<PhotoComment>,
     private readonly sqsNotificationService: SqsNotificationService,
+    private readonly s3Service: S3Service,
   ) {}
+
+  async createPhoto(
+    { userId, familyId }: AuthUserId,
+    { title, payload, filesCount }: CreatePhotoReqDTO,
+  ): Promise<CreatePhotoResDTO> {
+    try {
+      if (filesCount <= 0) {
+        throw new Error('At least one file to upload required.');
+      }
+
+      if (filesCount > 10) {
+        throw new Error(
+          'The number of files to upload should be less than 10.',
+        );
+      }
+
+      // create photo Entity
+      const photo = await this.photoRepository
+        .createQueryBuilder('photo')
+        .insert()
+        .into(Photo)
+        .values({
+          title,
+          payload,
+          author: { id: userId },
+          family: { id: familyId },
+        })
+        .updateEntity(false)
+        .execute();
+
+      const photoId = photo.raw?.insertId;
+
+      // get presigned urls and create photoFile Entity
+      const presignedUrlReqs: Promise<GetPresignedUrlResDTO>[] = [];
+
+      for (let i = 0; i < filesCount; i++) {
+        presignedUrlReqs.push(
+          this.s3Service.getPresignedUrl({
+            userId,
+            dir: S3Directory.PHOTO,
+            fileId: i,
+          }),
+        );
+      }
+      const presignedUrlRes = await Promise.all(presignedUrlReqs);
+
+      const filesToCreate: QueryDeepPartialEntity<PhotoFile>[] = [];
+
+      presignedUrlRes.forEach((item) => {
+        if (!item.result) {
+          throw new Error('Error occurred during upload configuration.');
+        }
+
+        filesToCreate.push({
+          url: item.url,
+          photo: { id: photoId },
+          uploaded: false,
+        });
+      });
+
+      await this.fileRespository
+        .createQueryBuilder('file')
+        .insert()
+        .into(PhotoFile)
+        .values(filesToCreate)
+        .execute();
+
+      // 알림은 파일 업로드 완료 후 처리
+
+      return {
+        result: true,
+        presignedUrls: presignedUrlRes.map((item) => item.url),
+      };
+    } catch (e) {
+      return { result: false, error: e.message };
+    }
+  }
 
   async deletePhoto(
     { userId, familyId }: AuthUserId,

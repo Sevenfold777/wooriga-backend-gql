@@ -10,14 +10,19 @@ import { CreateQuestionReqDTO } from './dto/create-question-req.dto';
 import { FamilyPediasResDTO } from './dto/family-pedias-res.dto';
 import { FamilyPediaResDTO } from './dto/family-pedia-res.dto';
 import { CreateResDTO } from 'src/common/dto/create-res.dto';
+import { EditProfilePhotoResDTO } from './dto/edit-profile-photo-res.dto';
 
 @Resolver(() => FamilyPedia)
 export class FamilyPediaResolver {
   constructor(private readonly familyPediaService: FamilyPediaService) {}
 
-  /**
-   * TODO: edit profile photo
-   */
+  @Mutation(() => EditProfilePhotoResDTO)
+  editProfilePhoto(
+    @AuthUser() user: AuthUserId,
+    @Args('id', { type: () => Int }) id: number,
+  ): Promise<EditProfilePhotoResDTO> {
+    return this.familyPediaService.editProfilePhoto(user, id);
+  }
 
   @Query(() => FamilyPediasResDTO)
   findPedias(@AuthUser() user: AuthUserId): Promise<FamilyPediasResDTO> {

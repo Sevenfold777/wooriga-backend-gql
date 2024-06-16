@@ -6,11 +6,13 @@ import { FamilyPedia } from './entities/family-pedia.entity';
 import { FamilyPediaQuestion } from './entities/family-pedia-question';
 import { User } from 'src/user/entities/user.entity';
 import { SqsNotificationModule } from 'src/sqs-notification/sqs-notification.module';
+import { S3Module } from 'src/s3/s3.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([FamilyPedia, FamilyPediaQuestion, User]),
     SqsNotificationModule,
+    S3Module,
   ],
   providers: [FamilyPediaResolver, FamilyPediaService],
   exports: [FamilyPediaService],

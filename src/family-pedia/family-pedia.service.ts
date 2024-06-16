@@ -15,6 +15,9 @@ import { CreateResDTO } from 'src/common/dto/create-res.dto';
 import { CreateFamilyPediaReqDTO } from './dto/create-family-pedia-req.dto';
 import { SqsNotificationProduceDTO } from 'src/sqs-notification/dto/sqs-notification-produce.dto';
 import { NotificationType } from 'src/sqs-notification/constants/notification-type';
+import { EditProfilePhotoResDTO } from './dto/edit-profile-photo-res.dto';
+import { S3Service } from 'src/s3/s3.service';
+import { S3Directory } from 'src/s3/constants/s3-directory.enum';
 
 @Injectable()
 export class FamilyPediaService {
@@ -26,7 +29,41 @@ export class FamilyPediaService {
     // @InjectRepository(User)
     // private userRepository: Repository<User>,
     private readonly sqsNotificationService: SqsNotificationService,
+    private readonly s3Service: S3Service,
   ) {}
+
+  // 같은 가족이라면 사진을 수정할 수 있음
+  async editProfilePhoto(
+    { familyId }: AuthUserId,
+    pediaId: number,
+  ): Promise<EditProfilePhotoResDTO> {
+    try {
+      // pedia owner가 나의 가족인지 확인
+      const pediaExist = await this.pediaFamValidate(pediaId, familyId);
+
+      if (!pediaExist) {
+        throw new Error('Cannot edit the question in the pedia.');
+      }
+
+      // get presigned url
+      const presignedUrl = await this.s3Service.getPresignedUrl({
+        userId: pediaId,
+        dir: S3Directory.PEDIA,
+        fileId: pediaId,
+      });
+
+      if (!presignedUrl.result) {
+        throw new Error('Error occurred during upload configuration.');
+      }
+
+      // 알림은 파일 업로드 완료 후 처리
+      // 그때 previous pedia profile photo를 s3에서 삭제
+
+      return { result: true, presignedUrl: presignedUrl.url };
+    } catch (e) {
+      return { result: false, error: e.message };
+    }
+  }
 
   async createFamilyPedia({
     ownerId,

@@ -22,6 +22,8 @@ import { Photo } from './entities/photo.entity';
 import { PhotoFileMetaDataDTO } from './dto/photo-file-metadata.dto';
 import { PhotoCommentMetaDataDTO } from './dto/photo-comment-metadata.dto';
 import { CreateResDTO } from 'src/common/dto/create-res.dto';
+import { CreatePhotoResDTO } from './dto/create-photo-res.dto';
+import { CreatePhotoReqDTO } from './dto/create-photo-req.dto';
 
 @Resolver(() => Photo)
 export class PhotoResolver {
@@ -32,13 +34,13 @@ export class PhotoResolver {
    * 1. create Photo 구현
    * 2. v1의 PhotoOutput, PhotoMeta DTO 어떻게 처리할지 (현재는 그냥 Photo 사용)
    */
-
-  /**
-   * createPhoto
-   * => upload module에서 연계 구현
-   * (service는 photo module 것 사용)
-   * (REST API mutipart/form-data)
-   */
+  @Mutation(() => CreatePhotoResDTO)
+  createPhoto(
+    @AuthUser() user: AuthUserId,
+    @Args() createPhotoReqDTO: CreatePhotoReqDTO,
+  ): Promise<CreatePhotoResDTO> {
+    return this.photoService.createPhoto(user, createPhotoReqDTO);
+  }
 
   @Mutation(() => BaseResponseDTO)
   deletePhoto(

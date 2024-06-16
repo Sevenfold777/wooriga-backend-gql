@@ -43,6 +43,7 @@ import { SchedulerModule } from './scheduler/scheduler.module';
 import { DAU } from './admin/entities/dau.entity';
 import { MAU } from './admin/entities/mau.entity';
 import { RedisFamilyMemberModule } from './redis-family-member/redis-family-member.module';
+import { S3Module } from './s3/s3.module';
 
 @Module({
   imports: [
@@ -104,6 +105,7 @@ import { RedisFamilyMemberModule } from './redis-family-member/redis-family-memb
     SqsNotificationModule,
     SchedulerModule,
     RedisFamilyMemberModule,
+    S3Module,
   ],
   controllers: [AppController],
 })
