@@ -18,8 +18,8 @@ export class S3Service {
   constructor(private readonly authService: AuthService) {
     this.s3Client = new S3Client({
       credentials: {
-        accessKeyId: process.env.AWS_ACCESS_KEY,
-        secretAccessKey: process.env.AWS_SECRET_KEY,
+        accessKeyId: process.env.AWS_S3_UPLOADER_ACCESS_KEY,
+        secretAccessKey: process.env.AWS_S3_UPLOADER_SECRET_KEY,
       },
       region: process.env.AWS_DEFAULT_REGION,
     });
@@ -30,6 +30,7 @@ export class S3Service {
     userId,
     dir,
     fileId,
+    expiresIn,
   }: GetPresignedUrlReqDTO): Promise<GetPresignedUrlResDTO> {
     try {
       const encryptedUserId = await this.authService.encrypt({
@@ -51,7 +52,7 @@ export class S3Service {
       });
 
       const presignedUrl = await getSignedUrl(this.s3Client, command, {
-        expiresIn: 60 * 5,
+        expiresIn,
       });
 
       return { result: true, url: presignedUrl };
@@ -62,7 +63,7 @@ export class S3Service {
 
   async deleteFile(url: string): Promise<BaseResponseDTO> {
     try {
-      const key = url.replace(/^(https?:\/\/[^\/]+\.com)/, '');
+      const key = url.replace(/^(https?:\/\/[^\/]+\.com\/)/, '');
 
       const command = new DeleteObjectCommand({
         Bucket: process.env.AWS_S3_BUCKET,

@@ -50,6 +50,7 @@ export class FamilyPediaService {
         userId: pediaId,
         dir: S3Directory.PEDIA,
         fileId: pediaId,
+        expiresIn: 60 * 5,
       });
 
       if (!presignedUrl.result) {

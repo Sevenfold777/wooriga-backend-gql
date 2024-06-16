@@ -10,4 +10,7 @@ export class GetPresignedUrlReqDTO {
 
   @IsNumber()
   fileId: number;
+
+  @IsNumber()
+  expiresIn: number; // in seconds
 }

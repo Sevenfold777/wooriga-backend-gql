@@ -82,6 +82,7 @@ export class PhotoService {
             userId,
             dir: S3Directory.PHOTO,
             fileId: i,
+            expiresIn: 60 * 5,
           }),
         );
       }
