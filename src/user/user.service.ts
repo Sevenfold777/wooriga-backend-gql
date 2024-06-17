@@ -201,7 +201,6 @@ export class UserService {
         .where('user.id = :userId', { userId })
         .getOneOrFail();
 
-      // TODO: fire user.updated event
       this.eventEmitter.emit(USER_UPDATE_EVENT, userUpdated);
 
       return { result: true, user: userUpdated };

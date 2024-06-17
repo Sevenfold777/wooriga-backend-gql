@@ -1,31 +1,36 @@
-import { IsNumber } from 'class-validator';
+import { IsNumber, IsOptional, IsString } from 'class-validator';
 import { NotificationType } from './notification-type';
 
 export type PhotoNotifParamType = {
   [NotificationType.PHOTO_CREATE]: PhotoCreateParam;
-  [NotificationType.PHOTO_UPLOADED]: PhotoUploadedParam;
   [NotificationType.COMMENT_PHOTO]: CommentPhotoParam;
 };
 
-class PhotoCreateParam {
+export class PhotoCreateParam {
   @IsNumber()
   photoId: number;
+
+  @IsOptional()
+  @IsString()
+  titlePreview: string;
+
+  @IsNumber()
+  authorId: number;
 
   @IsNumber()
   familyId: number;
 }
 
-class PhotoUploadedParam {
+export class CommentPhotoParam {
   @IsNumber()
   photoId: number;
 
-  @IsNumber()
-  userId: number;
-}
+  @IsOptional()
+  @IsString()
+  commentPreview: string;
 
-class CommentPhotoParam {
   @IsNumber()
-  photoId: number;
+  authorId: number;
 
   @IsNumber()
   familyId: number;

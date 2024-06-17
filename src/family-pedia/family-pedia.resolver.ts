@@ -11,6 +11,8 @@ import { FamilyPediasResDTO } from './dto/family-pedias-res.dto';
 import { FamilyPediaResDTO } from './dto/family-pedia-res.dto';
 import { CreateResDTO } from 'src/common/dto/create-res.dto';
 import { EditProfilePhotoResDTO } from './dto/edit-profile-photo-res.dto';
+import { ProfilePhotoUploadCompletedReqDTO } from './dto/profile-photo-upload-completed-req.dto';
+import { ProfilePhotosResDTO } from './dto/profile-photos-res.dto';
 
 @Resolver(() => FamilyPedia)
 export class FamilyPediaResolver {
@@ -22,6 +24,34 @@ export class FamilyPediaResolver {
     @Args('id', { type: () => Int }) id: number,
   ): Promise<EditProfilePhotoResDTO> {
     return this.familyPediaService.editProfilePhoto(user, id);
+  }
+
+  @Mutation(() => BaseResponseDTO)
+  profilePhotoUploadCompleted(
+    @AuthUser() user: AuthUserId,
+    @Args()
+    profilePhotoUploadCompletedReqDTO: ProfilePhotoUploadCompletedReqDTO,
+  ): Promise<BaseResponseDTO> {
+    return this.familyPediaService.profilePhotoUploadCompleted(
+      user,
+      profilePhotoUploadCompletedReqDTO,
+    );
+  }
+
+  @Mutation(() => BaseResponseDTO)
+  async deleteProfilePhoto(
+    @AuthUser() user: AuthUserId,
+    @Args('photoId', { type: () => Int }) photoId: number,
+  ): Promise<BaseResponseDTO> {
+    return this.familyPediaService.deleteProfilePhoto(user, photoId);
+  }
+
+  @Query(() => ProfilePhotosResDTO)
+  findProfilePhotos(
+    @AuthUser() user: AuthUserId,
+    @Args() pediaId: number,
+  ): Promise<ProfilePhotosResDTO> {
+    return this.familyPediaService.findProfilePhotos(user, pediaId);
   }
 
   @Query(() => FamilyPediasResDTO)

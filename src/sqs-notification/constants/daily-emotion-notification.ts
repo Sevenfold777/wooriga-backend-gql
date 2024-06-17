@@ -6,12 +6,18 @@ export type DailyEmotionNotifParamType = {
   [NotificationType.EMOTION_POKE]: EmotionPokeParam;
 };
 
-class EmotionChosenParam {
+export class EmotionChosenParam {
   @IsNumber()
   familyId: number;
-}
 
-class EmotionPokeParam {
   @IsNumber()
   userId: number;
+}
+
+export class EmotionPokeParam {
+  @IsNumber()
+  userId: number;
+
+  @IsNumber()
+  familyId: number;
 }

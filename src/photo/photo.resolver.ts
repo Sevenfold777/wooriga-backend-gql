@@ -24,22 +24,29 @@ import { PhotoCommentMetaDataDTO } from './dto/photo-comment-metadata.dto';
 import { CreateResDTO } from 'src/common/dto/create-res.dto';
 import { CreatePhotoResDTO } from './dto/create-photo-res.dto';
 import { CreatePhotoReqDTO } from './dto/create-photo-req.dto';
+import { PhotoFileUploadCompletedReqDTO } from './dto/photo-file-upload-completed-req.dto';
 
 @Resolver(() => Photo)
 export class PhotoResolver {
   constructor(private readonly photoService: PhotoService) {}
 
-  /**
-   * TODO
-   * 1. create Photo 구현
-   * 2. v1의 PhotoOutput, PhotoMeta DTO 어떻게 처리할지 (현재는 그냥 Photo 사용)
-   */
   @Mutation(() => CreatePhotoResDTO)
   createPhoto(
     @AuthUser() user: AuthUserId,
     @Args() createPhotoReqDTO: CreatePhotoReqDTO,
   ): Promise<CreatePhotoResDTO> {
     return this.photoService.createPhoto(user, createPhotoReqDTO);
+  }
+
+  @Mutation(() => BaseResponseDTO)
+  fileUploadCompleted(
+    @AuthUser() user: AuthUserId,
+    @Args() fileUploadCompletedReqDTO: PhotoFileUploadCompletedReqDTO,
+  ): Promise<BaseResponseDTO> {
+    return this.photoService.fileUploadCompleted(
+      user,
+      fileUploadCompletedReqDTO,
+    );
   }
 
   @Mutation(() => BaseResponseDTO)

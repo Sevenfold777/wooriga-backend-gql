@@ -44,6 +44,7 @@ import { DAU } from './admin/entities/dau.entity';
 import { MAU } from './admin/entities/mau.entity';
 import { RedisFamilyMemberModule } from './redis-family-member/redis-family-member.module';
 import { S3Module } from './s3/s3.module';
+import { FamilyPediaProfilePhoto } from './family-pedia/entities/family-pedia-profile-photo.entity';
 
 @Module({
   imports: [
@@ -79,6 +80,7 @@ import { S3Module } from './s3/s3.module';
         FamilyPediaQuestion,
         DAU,
         MAU,
+        FamilyPediaProfilePhoto,
       ],
       synchronize: false,
       logging: true,

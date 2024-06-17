@@ -1,31 +1,38 @@
+import 'reflect-metadata';
 import { Type } from 'class-transformer';
-import { IsNumber, ValidateNested } from 'class-validator';
+import { IsBoolean, IsNumber, ValidateNested } from 'class-validator';
 import { NotificationType } from './notification-type';
 
 export type LetterNotifParamType = {
   [NotificationType.LETTER_SEND]: LetterSendParam;
-  [NotificationType.TIMECAPSULE_OPENED]: TimeCapsulesOpenedParam;
+  [NotificationType.TIMECAPSULE_OPEN]: TimeCapsulesOpenParam;
   [NotificationType.NOTIFY_BIRTHDAY]: NotifyBirthdayParam;
 };
 
-class LetterSendParam {
+export class LetterSendParam {
   @IsNumber()
   letterId: number;
+
+  @IsBoolean()
+  isTimeCapsule: boolean;
+
+  @IsNumber()
+  familyId: number;
 
   @IsNumber()
   receiverId: number;
 }
 
-class TimeCapsulesOpenedParam {
+export class TimeCapsulesOpenParam {
   @ValidateNested({ each: true })
   @Type(() => TimeCapsuleParam)
   timaCapsules: TimeCapsuleParam[];
 }
 
-class NotifyBirthdayParam {
+export class NotifyBirthdayParam {
   @ValidateNested({ each: true })
   @Type(() => BirthdayUserWithFamilyParam)
-  familyIdsWithUserId: BirthdayUserWithFamilyParam[];
+  familyIdsWithBirthdayUserId: BirthdayUserWithFamilyParam[];
 }
 
 class BirthdayUserWithFamilyParam {
@@ -45,4 +52,7 @@ class TimeCapsuleParam {
 
   @IsNumber()
   senderId: number;
+
+  @IsNumber()
+  familyId: number;
 }

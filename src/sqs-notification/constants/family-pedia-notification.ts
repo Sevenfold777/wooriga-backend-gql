@@ -8,22 +8,34 @@ export type FamilyPediaNotifParamType = {
   [NotificationType.PEDIA_EDIT_PHOTO]: PediaEditPhotoParam;
 };
 
-class PediaQuestionCreatedParam {
+export class PediaQuestionCreatedParam {
+  @IsNumber()
+  familyId: number;
+
   @IsNumber()
   ownerId: number;
 }
 
-class PediaQuestionEdittedParam {
+export class PediaQuestionEdittedParam {
+  @IsNumber()
+  familyId: number;
+
   @IsNumber()
   ownerId: number;
 }
 
-class PediaAnswerParam {
+export class PediaAnswerParam {
   @IsNumber()
   familyId: number;
+
+  @IsNumber()
+  ownerId: number;
 }
 
-class PediaEditPhotoParam {
+export class PediaEditPhotoParam {
   @IsNumber()
   familyId: number;
+
+  @IsNumber()
+  ownerId: number;
 }

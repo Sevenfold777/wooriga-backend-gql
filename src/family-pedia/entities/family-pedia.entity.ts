@@ -28,15 +28,6 @@ export class FamilyPedia {
   @Field()
   profilePhoto: string;
 
-  // default 4:3 비율
-  @Column({ default: 2000 })
-  @Field(() => Int)
-  profileWidth: number;
-
-  @Column({ default: 1500 })
-  @Field(() => Int)
-  profileHeight: number;
-
   @OneToMany(() => FamilyPediaQuestion, (question) => question.familyPedia)
   @Field(() => [FamilyPediaQuestion])
   questions: FamilyPediaQuestion[];

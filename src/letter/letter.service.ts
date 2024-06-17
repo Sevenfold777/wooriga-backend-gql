@@ -131,7 +131,12 @@ export class LetterService {
           // request notification
           const sqsDTO = new SqsNotificationProduceDTO(
             NotificationType.LETTER_SEND,
-            { receiverId: insertPromises[i].receiverId, letterId },
+            {
+              receiverId: insertPromises[i].receiverId,
+              letterId,
+              familyId,
+              isTimeCapsule,
+            },
           );
 
           this.sqsNotificationService.sendNotification(sqsDTO); // AWARE: await 하지 않음

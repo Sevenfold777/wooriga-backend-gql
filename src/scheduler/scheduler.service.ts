@@ -290,7 +290,7 @@ export class SchedulerService {
     const sqsDTO = new SqsNotificationProduceDTO(
       NotificationType.NOTIFY_BIRTHDAY,
       {
-        familyIdsWithUserId: usersOnBirthday.map((user) => ({
+        familyIdsWithBirthdayUserId: usersOnBirthday.map((user) => ({
           familyId: user.familyId,
           birthdayUserId: user.id,
         })),
@@ -334,12 +334,13 @@ export class SchedulerService {
 
       // 2. 알림: sqs notif 요청
       const sqsDTO = new SqsNotificationProduceDTO(
-        NotificationType.TIMECAPSULE_OPENED,
+        NotificationType.TIMECAPSULE_OPEN,
         {
           timaCapsules: lettersByBatch.map((letter) => ({
             letterId: letter.id,
             receiverId: letter.receiver.id,
             senderId: letter.sender.id,
+            familyId: letter.receiver.familyId,
           })),
         },
       );

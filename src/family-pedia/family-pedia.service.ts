@@ -18,6 +18,9 @@ import { NotificationType } from 'src/sqs-notification/constants/notification-ty
 import { EditProfilePhotoResDTO } from './dto/edit-profile-photo-res.dto';
 import { S3Service } from 'src/s3/s3.service';
 import { S3Directory } from 'src/s3/constants/s3-directory.enum';
+import { FamilyPediaProfilePhoto } from './entities/family-pedia-profile-photo.entity';
+import { ProfilePhotoUploadCompletedReqDTO } from './dto/profile-photo-upload-completed-req.dto';
+import { ProfilePhotosResDTO } from './dto/profile-photos-res.dto';
 
 @Injectable()
 export class FamilyPediaService {
@@ -26,8 +29,8 @@ export class FamilyPediaService {
     private pediaRepository: Repository<FamilyPedia>,
     @InjectRepository(FamilyPediaQuestion)
     private questionRepository: Repository<FamilyPediaQuestion>,
-    // @InjectRepository(User)
-    // private userRepository: Repository<User>,
+    @InjectRepository(FamilyPediaProfilePhoto)
+    private profilePhotoRepository: Repository<FamilyPediaProfilePhoto>,
     private readonly sqsNotificationService: SqsNotificationService,
     private readonly s3Service: S3Service,
   ) {}
@@ -57,10 +60,135 @@ export class FamilyPediaService {
         throw new Error('Error occurred during upload configuration.');
       }
 
+      const endpoint = presignedUrl.url
+        .replace(/^(https?:\/\/[^\/]+\.com)/, '')
+        .split('?')[0];
+
+      await this.profilePhotoRepository
+        .createQueryBuilder('photo')
+        .insert()
+        .into(FamilyPediaProfilePhoto)
+        .values({
+          url: endpoint,
+          familyPedia: { ownerId: pediaId },
+        })
+        .execute();
+
       // 알림은 파일 업로드 완료 후 처리
-      // 그때 previous pedia profile photo를 s3에서 삭제
 
       return { result: true, presignedUrl: presignedUrl.url };
+    } catch (e) {
+      return { result: false, error: e.message };
+    }
+  }
+
+  async profilePhotoUploadCompleted(
+    { familyId }: AuthUserId,
+    { pediaId, url }: ProfilePhotoUploadCompletedReqDTO,
+  ): Promise<BaseResponseDTO> {
+    try {
+      // pedia owner가 나의 가족인지 확인
+      const pediaExist = await this.pediaFamValidate(pediaId, familyId);
+
+      if (!pediaExist) {
+        throw new Error('Not authorized to update the profile photo.');
+      }
+
+      const updateResult = await this.profilePhotoRepository
+        .createQueryBuilder('photo')
+        .update()
+        .where('photo.familyPediaId = :pediaId', { pediaId })
+        .andWhere('photo.url = :url', { url })
+        .set({ uploaded: true })
+        .updateEntity(false)
+        .execute();
+
+      if (updateResult.affected !== 1) {
+        throw new Error('Cannot update the profile photo entity.');
+      }
+
+      const updatePediaResult = await this.pediaRepository
+        .createQueryBuilder('pedia')
+        .update()
+        .where('pedia.owner.id = :pediaId', { pediaId })
+        .set({ profilePhoto: url })
+        .updateEntity(false)
+        .execute();
+
+      if (updatePediaResult.affected !== 1) {
+        throw new Error('Cannot update the pedia entity.');
+      }
+
+      // 알림
+      const sqsDTO = new SqsNotificationProduceDTO(
+        NotificationType.PEDIA_EDIT_PHOTO,
+        { familyId, ownerId: pediaId },
+      );
+
+      this.sqsNotificationService.sendNotification(sqsDTO);
+
+      return { result: true };
+    } catch (e) {
+      return { result: false, error: e.message };
+    }
+  }
+
+  async findProfilePhotos(
+    { familyId }: AuthUserId,
+    pediaId: number,
+  ): Promise<ProfilePhotosResDTO> {
+    try {
+      const profilePhotos = await this.profilePhotoRepository
+        .createQueryBuilder('photo')
+        .select()
+        .innerJoin('photo.familyPedia', 'pedia', 'pedia.ownerId = :pediaId', {
+          pediaId,
+        })
+        .where('pedia.familyId = :familyId', { familyId })
+        .andWhere('photo.uploaded = true')
+        .orderBy('id', 'DESC')
+        .getMany();
+
+      return { result: true, profilePhotos };
+    } catch (e) {
+      return { result: false, error: e.message };
+    }
+  }
+
+  // 올리는 것은 여러 가족 사용자가 올릴 수 있지만, 삭제는 owner만 가능
+  async deleteProfilePhoto(
+    { userId }: AuthUserId,
+    photoId: number,
+  ): Promise<BaseResponseDTO> {
+    try {
+      // check if exist
+      const photo = await this.profilePhotoRepository
+        .createQueryBuilder('photo')
+        .select()
+        .innerJoin('photo.familyPedia', 'pedia', 'pedia.owner.id = :userId', {
+          userId,
+        })
+        .where('photo.id = :photoId', { photoId })
+        .getOneOrFail();
+
+      const deleteResult = await this.profilePhotoRepository
+        .createQueryBuilder('photo')
+        .delete()
+        .where('photo.id = :photoId', { photoId })
+        .andWhere('photo.familyPediaId = :userId', { userId })
+        .execute();
+
+      if (deleteResult.affected !== 1) {
+        throw new Error('Cannot delete the entity.');
+      }
+
+      const s3DeleteResult = await this.s3Service.deleteFile(photo.url);
+
+      if (!s3DeleteResult.result) {
+        throw new Error('Cannot delete the image from the storage.');
+      }
+
+      return { result: true };
     } catch (e) {
       return { result: false, error: e.message };
     }
@@ -190,7 +318,7 @@ export class FamilyPediaService {
       // 알림
       const sqsDTO = new SqsNotificationProduceDTO(
         NotificationType.PEDIA_QUESTION_CREATED,
-        { ownerId: pediaId },
+        { ownerId: pediaId, familyId },
       );
 
       this.sqsNotificationService.sendNotification(sqsDTO);
@@ -233,7 +361,7 @@ export class FamilyPediaService {
       // 알림
       const sqsDTO = new SqsNotificationProduceDTO(
         NotificationType.PEDIA_QUESTION_EDITTED,
-        { ownerId: pediaId },
+        { ownerId: pediaId, familyId },
       );
 
       this.sqsNotificationService.sendNotification(sqsDTO);
@@ -332,7 +460,7 @@ export class FamilyPediaService {
       // 알림
       const sqsDTO = new SqsNotificationProduceDTO(
         NotificationType.PEDIA_ANSWER,
-        { familyId },
+        { familyId, ownerId: userId },
       );
 
       this.sqsNotificationService.sendNotification(sqsDTO);

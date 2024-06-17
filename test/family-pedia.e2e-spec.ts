@@ -56,8 +56,6 @@ describe('Family Pedia Module (e2e)', () => {
                         familyId
                     }
                     profilePhoto
-                    profileWidth
-                    profileHeight
                 }
             }
         }

@@ -1,3 +1,4 @@
+import { PhotoFileUploadCompletedReqDTO } from './dto/photo-file-upload-completed-req.dto';
 import { SqsNotificationService } from './../sqs-notification/sqs-notification.service';
 import { Injectable } from '@nestjs/common';
 import { BaseResponseDTO } from 'src/common/dto/base-res.dto';
@@ -95,8 +96,12 @@ export class PhotoService {
           throw new Error('Error occurred during upload configuration.');
         }
 
+        const endpoint = item.url
+          .replace(/^(https?:\/\/[^\/]+\.com)/, '')
+          .split('?')[0];
+
         filesToCreate.push({
-          url: item.url,
+          url: endpoint,
           photo: { id: photoId },
           uploaded: false,
         });
@@ -120,13 +125,65 @@ export class PhotoService {
     }
   }
 
+  async fileUploadCompleted(
+    { userId, familyId }: AuthUserId,
+    { photoId, urls }: PhotoFileUploadCompletedReqDTO,
+  ): Promise<BaseResponseDTO> {
+    try {
+      // validate if photo file exist
+      const photo = await this.photoRepository
+        .createQueryBuilder('photo')
+        .select('photo.id')
+        .addSelect('photo.title')
+        .where('photo.id = :photoId', { photoId })
+        .andWhere('family.id = :familyId', { familyId })
+        .andWhere('author.id = :userId', { userId })
+        .getOneOrFail();
+
+      const updateResult = await this.fileRespository
+        .createQueryBuilder('file')
+        .update()
+        .where('file.photoId = :photoId', { photoId })
+        .andWhere('file.url IN (:...urls)', { urls })
+        .set({ uploaded: true })
+        .updateEntity(false)
+        .execute();
+
+      if (updateResult.affected !== urls.length) {
+        throw new Error(
+          `Cannot update ${urls.length - updateResult.affected} photo file entities' status to uploaded.`,
+        );
+      }
+
+      // 알림
+      const titlePreview =
+        photo.title.length > 10
+          ? photo.title.slice(0, 10) + '...'
+          : photo.title;
+
+      const sqsDTO = new SqsNotificationProduceDTO(
+        NotificationType.PHOTO_CREATE,
+        { photoId, familyId, authorId: userId, titlePreview },
+      );
+
+      this.sqsNotificationService.sendNotification(sqsDTO);
+
+      return { result: true };
+    } catch (e) {
+      return { result: false, error: e.message };
+    }
+  }
+
   async deletePhoto(
     { userId, familyId }: AuthUserId,
     id: number,
   ): Promise<BaseResponseDTO> {
     try {
-      // TODO: handle S3 photo files
-      // TODO: delete comments
+      const files = await this.fileRespository
+        .createQueryBuilder('file')
+        .select()
+        .where('file.photoId = :photoId', { photoId: id })
+        .getMany();
 
       const deleteResult = await this.photoRepository
         .createQueryBuilder('photo')
@@ -137,11 +194,23 @@ export class PhotoService {
         .andWhere('family.id = :familyId', { familyId })
         .execute();
 
-      // photo file은 onDelete Cascade 적용됨
-
       if (deleteResult.affected !== 1) {
         throw new Error('Cannot delete the photo.');
       }
+
+      const deleteRequests: Promise<BaseResponseDTO>[] = [];
+      for (const file of files) {
+        deleteRequests.push(this.s3Service.deleteFile(file.url));
+      }
+
+      const results = await Promise.all(deleteRequests);
+      for (const res of results) {
+        if (!res.result) {
+          throw new Error('Cannot delete the photo from the storage.');
+        }
+      }
+
+      // photo file은 onDelete Cascade 적용됨
 
       return { result: true };
     } catch (e) {
@@ -211,7 +280,7 @@ export class PhotoService {
         .select()
         .addSelect('like.id')
         .innerJoinAndSelect('photo.author', 'author')
-        .innerJoinAndSelect('photo.files', 'file')
+        .innerJoinAndSelect('photo.files', 'file', 'file.uploaded = true')
         .leftJoin('photo.likes', 'like', 'like.user.id = :userId', { userId })
         .where('photo.id = :id', { id })
         .andWhere('photo.family.id = :familyId', { familyId })
@@ -306,9 +375,12 @@ export class PhotoService {
       const commentId = insertResult.raw?.insertId;
 
       // 알림: notification
+      const commentPreview =
+        payload.length > 10 ? payload.slice(0, 10) + '...' : payload;
+
       const sqsDTO = new SqsNotificationProduceDTO(
         NotificationType.COMMENT_PHOTO,
-        { photoId, familyId },
+        { photoId, familyId, authorId: userId, commentPreview },
       );
 
       this.sqsNotificationService.sendNotification(sqsDTO);
@@ -407,6 +479,7 @@ export class PhotoService {
         .select('file.url')
         .addSelect('file.photoId')
         .where('file.photoId IN (:...photoIds)', { photoIds })
+        .andWhere('file.uploaded = true')
         .orderBy('file.id', 'ASC')
         .getMany();
 

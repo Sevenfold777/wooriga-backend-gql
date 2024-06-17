@@ -271,9 +271,12 @@ export class MessageService {
       const commentId = insertResult.raw?.insertId;
 
       // 알림: 댓글 알림
+      const commentPreview =
+        payload.length > 10 ? payload.slice(0, 10) + '...' : payload;
+
       const sqsDTO = new SqsNotificationProduceDTO(
         NotificationType.COMMENT_MESSAGE,
-        { familyId, messageFamId },
+        { familyId, messageFamId, authorId: userId, commentPreview },
       );
 
       this.sqsNotificationService.sendNotification(sqsDTO);

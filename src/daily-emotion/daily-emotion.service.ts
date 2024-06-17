@@ -158,7 +158,7 @@ export class DailyEmotionService {
       // 알림: send notification
       const sqsDTO = new SqsNotificationProduceDTO(
         NotificationType.EMOTION_CHOSEN,
-        { familyId },
+        { familyId, userId },
       );
 
       this.sqsNotificationService.sendNotification(sqsDTO);
@@ -219,7 +219,7 @@ export class DailyEmotionService {
       // 알림: send notification
       const sqsDTO = new SqsNotificationProduceDTO(
         NotificationType.EMOTION_POKE,
-        { userId: targetUser.id },
+        { userId: targetUser.id, familyId },
       );
 
       // 알림 보내는 것 자체가 목적이므로, 예외적으로 await 붙임
