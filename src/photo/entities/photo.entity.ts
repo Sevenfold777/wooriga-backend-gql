@@ -50,4 +50,7 @@ export class Photo extends CoreEntity {
   /* resolved field: 선언하지 않아도 되지만 for typescript error handle */
   fileMetaData?: PhotoFileMetaDataDTO;
   commentMetaData?: PhotoCommentMetaDataDTO;
+
+  @Column({ default: false })
+  uploaded: boolean;
 }

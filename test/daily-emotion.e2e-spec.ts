@@ -1,4 +1,4 @@
-import { INestApplication } from '@nestjs/common';
+import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { AppModule } from 'src/app.module';
 import { gqlAuthReq } from './utils/request';
@@ -38,6 +38,8 @@ describe('Daily Emotion Module (e2e)', () => {
 
     app = moduleFixture.createNestApplication();
     dailyEmoRepository = moduleFixture.get('DailyEmotionRepository');
+
+    app.useGlobalPipes(new ValidationPipe({ transform: true }));
 
     await app.init();
   });

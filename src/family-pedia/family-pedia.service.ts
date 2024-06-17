@@ -15,12 +15,12 @@ import { CreateResDTO } from 'src/common/dto/create-res.dto';
 import { CreateFamilyPediaReqDTO } from './dto/create-family-pedia-req.dto';
 import { SqsNotificationProduceDTO } from 'src/sqs-notification/dto/sqs-notification-produce.dto';
 import { NotificationType } from 'src/sqs-notification/constants/notification-type';
-import { EditProfilePhotoResDTO } from './dto/edit-profile-photo-res.dto';
 import { S3Service } from 'src/s3/s3.service';
 import { S3Directory } from 'src/s3/constants/s3-directory.enum';
 import { FamilyPediaProfilePhoto } from './entities/family-pedia-profile-photo.entity';
 import { ProfilePhotoUploadCompletedReqDTO } from './dto/profile-photo-upload-completed-req.dto';
 import { ProfilePhotosResDTO } from './dto/profile-photos-res.dto';
+import { CreateProfilePhotoResDTO } from './dto/create-profile-photo-res.dto';
 
 @Injectable()
 export class FamilyPediaService {
@@ -36,10 +36,10 @@ export class FamilyPediaService {
   ) {}
 
   // 같은 가족이라면 사진을 수정할 수 있음
-  async editProfilePhoto(
+  async createProfilePhoto(
     { familyId }: AuthUserId,
     pediaId: number,
-  ): Promise<EditProfilePhotoResDTO> {
+  ): Promise<CreateProfilePhotoResDTO> {
     try {
       // pedia owner가 나의 가족인지 확인
       const pediaExist = await this.pediaFamValidate(pediaId, familyId);
@@ -165,9 +165,12 @@ export class FamilyPediaService {
       const photo = await this.profilePhotoRepository
         .createQueryBuilder('photo')
         .select()
-        .innerJoin('photo.familyPedia', 'pedia', 'pedia.owner.id = :userId', {
-          userId,
-        })
+        .innerJoinAndSelect(
+          'photo.familyPedia',
+          'pedia',
+          'pedia.owner.id = :userId',
+          { userId },
+        )
         .where('photo.id = :photoId', { photoId })
         .getOneOrFail();
 
@@ -180,6 +183,20 @@ export class FamilyPediaService {
 
       if (deleteResult.affected !== 1) {
         throw new Error('Cannot delete the entity.');
+      }
+
+      if (photo.familyPedia.profilePhoto === photo.url) {
+        const updateResult = await this.pediaRepository
+          .createQueryBuilder('pedia')
+          .update()
+          .where('pedia.owner.id = :userId', { userId })
+          .set({ profilePhoto: process.env.FAMILY_PEDIA_DEFAULT_IMG })
+          .updateEntity(false)
+          .execute();
+
+        if (updateResult.affected !== 1) {
+          throw new Error('Cannot delete update the profile photo page');
+        }
       }
 
       const s3DeleteResult = await this.s3Service.deleteFile(photo.url);

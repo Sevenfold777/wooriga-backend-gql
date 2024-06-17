@@ -118,6 +118,7 @@ export class PhotoService {
 
       return {
         result: true,
+        photoId,
         presignedUrls: presignedUrlRes.map((item) => item.url),
       };
     } catch (e) {
@@ -136,23 +137,35 @@ export class PhotoService {
         .select('photo.id')
         .addSelect('photo.title')
         .where('photo.id = :photoId', { photoId })
-        .andWhere('family.id = :familyId', { familyId })
-        .andWhere('author.id = :userId', { userId })
+        .andWhere('photo.familyId = :familyId', { familyId })
+        .andWhere('photo.author.id = :userId', { userId })
         .getOneOrFail();
 
-      const updateResult = await this.fileRespository
+      const updateFilesResult = await this.fileRespository
         .createQueryBuilder('file')
         .update()
-        .where('file.photoId = :photoId', { photoId })
-        .andWhere('file.url IN (:...urls)', { urls })
+        .where('photoId = :photoId', { photoId })
+        .andWhere('url IN (:...urls)', { urls })
         .set({ uploaded: true })
         .updateEntity(false)
         .execute();
 
-      if (updateResult.affected !== urls.length) {
+      if (updateFilesResult.affected !== urls.length) {
         throw new Error(
-          `Cannot update ${urls.length - updateResult.affected} photo file entities' status to uploaded.`,
+          `Cannot update ${urls.length - updateFilesResult.affected} photo file entities' status to uploaded.`,
         );
+      }
+
+      const updatePhotoResult = await this.photoRepository
+        .createQueryBuilder()
+        .update()
+        .where('id = :photoId', { photoId })
+        .set({ uploaded: true })
+        .updateEntity(true)
+        .execute();
+
+      if (updatePhotoResult.affected !== 1) {
+        throw new Error("Cannot update the photo entity's status to uploaded.");
       }
 
       // 알림
@@ -200,7 +213,11 @@ export class PhotoService {
 
       const deleteRequests: Promise<BaseResponseDTO>[] = [];
       for (const file of files) {
-        deleteRequests.push(this.s3Service.deleteFile(file.url));
+        deleteRequests.push(
+          this.s3Service.deleteFile(
+            `https://${process.env.AWS_S3_BUCKET}.s3.${process.env.AWS_DEFAULT_REGION}.amazonaws.com${file.url}`,
+          ),
+        );
       }
 
       const results = await Promise.all(deleteRequests);
@@ -258,6 +275,7 @@ export class PhotoService {
         .select()
         .innerJoinAndSelect('photo.author', 'author')
         .where('photo.familyId = :familyId', { familyId })
+        .andWhere('photo.uploaded = true')
         .orderBy('photo.createdAt', 'DESC')
         .addOrderBy('photo.id', 'DESC')
         .offset(prev * take)
@@ -467,6 +485,7 @@ export class PhotoService {
       // metadata를 얻을 수 없다고 해서 전체 findPhotos가 동작 실패하지는 않도록 에러 핸들링
       // TODO: front 단에서도, metadata 구하는 중 에러 발생시 metadata 각 필드에 null 들어갈 수 있다는 것 알아야
       console.error(e);
+
       return { thumbnailUrl: null, filesCount: null };
     }
   }

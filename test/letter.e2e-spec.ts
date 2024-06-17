@@ -1,4 +1,4 @@
-import { INestApplication } from '@nestjs/common';
+import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { AppModule } from 'src/app.module';
 import { LetterEmotionType } from 'src/letter/constants/letter-emotion-type.enum';
@@ -38,6 +38,8 @@ describe('Letter module (e2e)', () => {
     app = moduleFixture.createNestApplication();
     letterRepository = app.get('LetterRepository');
     letterGuideRepository = app.get('LetterGuideRepository');
+
+    app.useGlobalPipes(new ValidationPipe({ transform: true }));
 
     await app.init();
   });

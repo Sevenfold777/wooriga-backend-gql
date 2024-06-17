@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication } from '@nestjs/common';
+import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { AppModule } from 'src/app.module';
 import { gqlAuthReq } from './utils/request';
 import { TEST_FAMILY_ID, TEST_USER_ID } from './utils/config';
@@ -22,6 +22,7 @@ describe('Message Module (e2e)', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
+    app.useGlobalPipes(new ValidationPipe({ transform: true }));
     await app.init();
   });
 

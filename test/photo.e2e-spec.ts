@@ -1,4 +1,4 @@
-import { INestApplication } from '@nestjs/common';
+import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { AppModule } from 'src/app.module';
 import { PhotoFile } from 'src/photo/entities/photo-file.entity';
@@ -20,6 +20,11 @@ import { PhotoComment } from 'src/photo/entities/photo-comment.entity';
 import { CreateResDTO } from 'src/common/dto/create-res.dto';
 import { CommentStatus } from 'src/common/constants/comment-status.enum';
 import { PhotoCommentsResDTO } from 'src/photo/dto/photo-comments-res.dto';
+import { CreatePhotoResDTO } from 'src/photo/dto/create-photo-res.dto';
+import { putObjectS3 } from './utils/putObjectS3';
+import * as fs from 'fs';
+import * as path from 'path';
+import axios from 'axios';
 
 describe('Photo Module (e2e)', () => {
   let app: INestApplication;
@@ -33,6 +38,9 @@ describe('Photo Module (e2e)', () => {
   const photofilesCount = 2;
   const photoTitle = 'test title';
   const photoPayload = 'test payload';
+
+  let presignedUrls: string[] = [];
+  let presignedTgtPhotoId: number;
 
   const invalidFamilyMemberId = 7;
   const invalidFamilyId = 7;
@@ -51,6 +59,8 @@ describe('Photo Module (e2e)', () => {
     likeRepository = moduleFixture.get('PhotoLikeRepository');
     commentRepository = moduleFixture.get('PhotoCommentRepository');
 
+    app.useGlobalPipes(new ValidationPipe({ transform: true }));
+
     await app.init();
 
     // init photo entities for test
@@ -59,6 +69,7 @@ describe('Photo Module (e2e)', () => {
       payload: photoPayload,
       family: { id: TEST_FAMILY_ID },
       author: { id: TEST_USER_ID },
+      uploaded: true,
     });
 
     const myPhotoId = myPhotoInsertResult.raw?.insertId;
@@ -73,6 +84,7 @@ describe('Photo Module (e2e)', () => {
       payload: photoPayload,
       family: { id: TEST_FAMILY_ID },
       author: { id: TEST_FAMILY_USER_ID1 },
+      uploaded: true,
     });
 
     const famPhotoId = famPhotoInsertResult.raw?.insertId;
@@ -87,6 +99,7 @@ describe('Photo Module (e2e)', () => {
       payload: photoPayload,
       family: { id: invalidFamilyId },
       author: { id: invalidFamilyMemberId },
+      uploaded: true,
     });
 
     invalidFamPhotoId = notFamPhotoInsertResult.raw?.insertId;
@@ -1185,5 +1198,178 @@ describe('Photo Module (e2e)', () => {
         expect(result).toBe(false);
         expect(error).toBe('Cannot delete the photo.');
       });
+  });
+
+  // e2e test for photo creation
+
+  // 1. create photo
+  it('create photo', async () => {
+    // given
+    const testFilesCount = 3;
+
+    // when
+    const query = `
+      mutation {
+        createPhoto(title: "${photoTitle}", payload: "${photoPayload}", filesCount: ${testFilesCount}) {
+          result
+          error
+          photoId
+          presignedUrls
+        }
+      }
+    `;
+
+    await gqlAuthReq(app, query)
+      .expect(200)
+      .expect((res: { body: { data: { createPhoto: CreatePhotoResDTO } } }) => {
+        const {
+          body: {
+            data: {
+              createPhoto: {
+                result,
+                error,
+                presignedUrls: returnedUrls,
+                photoId,
+              },
+            },
+          },
+        } = res;
+
+        expect(result).toBe(true);
+        expect(error).toBeNull();
+        expect(returnedUrls.length).toBe(testFilesCount);
+
+        presignedTgtPhotoId = photoId;
+        presignedUrls = returnedUrls;
+      });
+
+    // then
+    const photo = await photoRepository.findOne({
+      where: { id: presignedTgtPhotoId },
+      relations: { files: true },
+    });
+
+    expect(photo.familyId).toBe(TEST_FAMILY_ID);
+    expect(photo.files.length).toBe(testFilesCount);
+
+    photo.files.sort((a, b) => a.id - b.id);
+    presignedUrls.forEach((url, idx) => {
+      const strippedUrl = url
+        .replace(/^(https?:\/\/[^\/]+\.com)/, '')
+        .split('?')[0];
+      expect(photo.files[idx].url).toBe(strippedUrl);
+    });
+
+    // // 뒷 정리
+    // const deleteResult = await photoRepository.delete({ id: photo[0].id });
+    // expect(deleteResult.affected).toBe(1);
+  });
+
+  // 2. file upload completed
+  it('upload photo completed', async () => {
+    // given
+    // 위 create photo 테스트에서 생성된 presignedUrls
+    const testFilePath = path.join(__dirname, 'utils', 'test-image.jpeg');
+    const testFile = fs.readFileSync(testFilePath);
+
+    const strippedUrls = presignedUrls.map(
+      (url) => url.replace(/^(https?:\/\/[^\/]+\.com)/, '').split('?')[0],
+    );
+
+    await Promise.all(presignedUrls.map((url) => putObjectS3(url, testFile)));
+
+    // when
+    const query = `
+      mutation {
+        fileUploadCompleted(photoId: ${presignedTgtPhotoId}, urls: ${JSON.stringify(strippedUrls)}) {
+          result
+          error
+        }
+      }
+    `;
+
+    await gqlAuthReq(app, query)
+      .expect(200)
+      .expect(
+        (res: { body: { data: { fileUploadCompleted: BaseResponseDTO } } }) => {
+          const {
+            body: {
+              data: {
+                fileUploadCompleted: { result, error },
+              },
+            },
+          } = res;
+
+          expect(result).toBe(true);
+          expect(error).toBeNull();
+        },
+      );
+
+    // then
+    const photo = await photoRepository.findOne({
+      where: { id: presignedTgtPhotoId },
+      relations: { files: true },
+    });
+
+    expect(photo.familyId).toBe(TEST_FAMILY_ID);
+    expect(photo.files.length).toBe(presignedUrls.length);
+    expect(photo.uploaded).toBe(true);
+
+    photo.files.sort((a, b) => a.id - b.id);
+    strippedUrls.forEach((url, idx) => {
+      expect(photo.files[idx].url).toBe(url);
+      expect(photo.files[idx].uploaded).toBe(true);
+    });
+  });
+
+  // 3. delete photo
+  it('delete photo', async () => {
+    // given
+    // 위 create photo 테스트에서 생성된 presignedUrls
+    // 위 upload photo completed에서 s3에 올린 파일
+
+    // when
+    const query = `
+      mutation {
+        deletePhoto(id: ${presignedTgtPhotoId}) {
+          result
+          error
+        }
+      }
+    `;
+
+    await gqlAuthReq(app, query)
+      .expect(200)
+      .expect((res: { body: { data: { deletePhoto: BaseResponseDTO } } }) => {
+        const {
+          body: {
+            data: {
+              deletePhoto: { result, error },
+            },
+          },
+        } = res;
+
+        expect(result).toBe(true);
+        expect(error).toBeNull();
+      });
+
+    // then
+    const photo = await photoRepository.findOne({
+      where: { id: presignedTgtPhotoId },
+    });
+    expect(photo).toBeNull();
+
+    const files = await fileRepository.find({
+      where: { photo: { id: presignedTgtPhotoId } },
+    });
+    expect(files.length).toBe(0);
+
+    for (const url of presignedUrls) {
+      const targetUrl = url.split('?')[0];
+
+      axios.get(targetUrl).catch((err) => {
+        expect(err.response.status).toBe(403);
+      });
+    }
   });
 });

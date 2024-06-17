@@ -1,4 +1,4 @@
-import { INestApplication } from '@nestjs/common';
+import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { AppModule } from 'src/app.module';
 import { gqlAuthReq } from './utils/request';
@@ -28,6 +28,8 @@ describe('Family Pedia Module (e2e)', () => {
 
     app = moduleFixture.createNestApplication();
     questionRepository = moduleFixture.get('FamilyPediaQuestionRepository');
+
+    app.useGlobalPipes(new ValidationPipe({ transform: true }));
 
     await app.init();
   });
@@ -651,4 +653,9 @@ describe('Family Pedia Module (e2e)', () => {
 
     await questionRepository.delete({ id: newQuestionId });
   });
+
+  // e2e test for profile photo edit
+  // 1. edit profile photo
+  // 2. find profile photos
+  // 3. delete profile photo
 });

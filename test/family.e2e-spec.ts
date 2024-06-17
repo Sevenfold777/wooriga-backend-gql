@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication } from '@nestjs/common';
+import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { AppModule } from 'src/app.module';
 import { gqlAuthReq } from './utils/request';
 import { FamilyResDTO } from 'src/family/dto/family-res.dto';
@@ -15,6 +15,8 @@ describe('Family Module (e2e)', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
+    app.useGlobalPipes(new ValidationPipe({ transform: true }));
+
     await app.init();
   });
 

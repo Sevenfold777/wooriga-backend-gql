@@ -10,20 +10,20 @@ import { CreateQuestionReqDTO } from './dto/create-question-req.dto';
 import { FamilyPediasResDTO } from './dto/family-pedias-res.dto';
 import { FamilyPediaResDTO } from './dto/family-pedia-res.dto';
 import { CreateResDTO } from 'src/common/dto/create-res.dto';
-import { EditProfilePhotoResDTO } from './dto/edit-profile-photo-res.dto';
 import { ProfilePhotoUploadCompletedReqDTO } from './dto/profile-photo-upload-completed-req.dto';
 import { ProfilePhotosResDTO } from './dto/profile-photos-res.dto';
+import { CreateProfilePhotoResDTO } from './dto/create-profile-photo-res.dto';
 
 @Resolver(() => FamilyPedia)
 export class FamilyPediaResolver {
   constructor(private readonly familyPediaService: FamilyPediaService) {}
 
-  @Mutation(() => EditProfilePhotoResDTO)
-  editProfilePhoto(
+  @Mutation(() => CreateProfilePhotoResDTO)
+  createProfilePhoto(
     @AuthUser() user: AuthUserId,
     @Args('id', { type: () => Int }) id: number,
-  ): Promise<EditProfilePhotoResDTO> {
-    return this.familyPediaService.editProfilePhoto(user, id);
+  ): Promise<CreateProfilePhotoResDTO> {
+    return this.familyPediaService.createProfilePhoto(user, id);
   }
 
   @Mutation(() => BaseResponseDTO)
@@ -39,7 +39,7 @@ export class FamilyPediaResolver {
   }
 
   @Mutation(() => BaseResponseDTO)
-  async deleteProfilePhoto(
+  deleteProfilePhoto(
     @AuthUser() user: AuthUserId,
     @Args('photoId', { type: () => Int }) photoId: number,
   ): Promise<BaseResponseDTO> {
