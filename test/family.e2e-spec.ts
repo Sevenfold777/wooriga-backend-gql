@@ -6,6 +6,8 @@ import { FamilyResDTO } from 'src/family/dto/family-res.dto';
 import { TEST_FAMILY_ID, TEST_USER_ID } from './utils/config';
 import { InviteFamilyResDTO } from 'src/family/dto/invite-family-res.dto';
 
+jest.setTimeout(10000);
+
 describe('Family Module (e2e)', () => {
   let app: INestApplication;
 

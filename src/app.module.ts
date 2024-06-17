@@ -49,6 +49,7 @@ import { FamilyPediaProfilePhoto } from './family-pedia/entities/family-pedia-pr
 @Module({
   imports: [
     ConfigModule.forRoot({ envFilePath: '.env.dev.local' }),
+    // ConfigModule.forRoot({ envFilePath: '.env.dev.remote' }),
     EventEmitterModule.forRoot({ ignoreErrors: false }),
     ScheduleModule.forRoot(),
     TypeOrmModule.forRoot({

@@ -1,6 +1,6 @@
 import { CoreEntity } from 'src/common/entites/core.entity';
 import { User } from 'src/user/entities/user.entity';
-import { Entity, Column, ManyToOne } from 'typeorm';
+import { Entity, Column, ManyToOne, JoinColumn } from 'typeorm';
 import { LetterEmotionType } from '../constants/letter-emotion-type.enum';
 import { Field, Int, ObjectType } from '@nestjs/graphql';
 
@@ -28,19 +28,21 @@ export class Letter extends CoreEntity {
   isTemp: boolean; // 임시저장
 
   // sender receiver에 대하여 onDelete Cascade 되지 않음 (=>left join 사용)
-  @Column()
+  @Column({ name: 'senderId', default: null })
   @Field(() => Int, { nullable: true })
   senderId: number;
 
   @ManyToOne(() => User, { createForeignKeyConstraints: false })
+  @JoinColumn({ name: 'senderId' })
   @Field(() => User, { nullable: true })
   sender: User;
 
-  @Column()
-  @Field(() => Int)
+  @Column({ name: 'receiverId', default: null })
+  @Field(() => Int, { nullable: true })
   receiverId: number;
 
   @ManyToOne(() => User, { createForeignKeyConstraints: false })
+  @JoinColumn({ name: 'receiverId' })
   @Field(() => User, { nullable: true })
   receiver: User;
 

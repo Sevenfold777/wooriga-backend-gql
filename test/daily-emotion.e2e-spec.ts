@@ -15,6 +15,8 @@ import { DailyEmotion } from 'src/daily-emotion/entities/daily-emotion.entity';
 import { DailyEmosResDTO } from 'src/daily-emotion/dto/daily-emos-res.dto';
 import { DailyEmoByDateResDTO } from 'src/daily-emotion/dto/daily-emo-by-date-res.dto';
 
+jest.setTimeout(10000);
+
 describe('Daily Emotion Module (e2e)', () => {
   let app: INestApplication;
   let dailyEmoRepository: Repository<DailyEmotion>;

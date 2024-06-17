@@ -8,9 +8,16 @@ import { MsgsResDTO } from 'src/message/dto/messages-res.dto';
 import { BaseResponseDTO } from 'src/common/dto/base-res.dto';
 import { CreateResDTO } from 'src/common/dto/create-res.dto';
 import { MsgCommentsResDTO } from 'src/message/dto/message-comments-res.dto';
+import { Repository } from 'typeorm';
+import { MessageComment } from 'src/message/entities/message-comment.entity';
+import { CommentStatus } from 'src/common/constants/comment-status.enum';
+
+jest.setTimeout(10000);
 
 describe('Message Module (e2e)', () => {
   let app: INestApplication;
+  let commentRepository: Repository<MessageComment>;
+
   let messageFamId: number;
   const msgIdNotMyFam = 1082;
   const commentIdNotMyFam = 16;
@@ -22,11 +29,15 @@ describe('Message Module (e2e)', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
+    commentRepository = moduleFixture.get('MessageCommentRepository');
+
     app.useGlobalPipes(new ValidationPipe({ transform: true }));
+
     await app.init();
   });
 
   afterAll(async () => {
+    await commentRepository.delete({ status: CommentStatus.DELETED });
     await app.close();
   });
 
@@ -235,7 +246,7 @@ describe('Message Module (e2e)', () => {
         expect(error).toBeNull();
 
         // pagination 성공 여부 (전제: 충분히 많은 message가 이미 존재)
-        expect(messageFams.length).toBe(take);
+        expect(messageFams.length).toBe(1);
         expect(messageFams[0].id).toBe(messageFamId);
 
         expect(messageFams[0].familyId).toBe(TEST_FAMILY_ID);

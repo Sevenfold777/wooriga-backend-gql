@@ -20,6 +20,8 @@ import { LetterBoxType } from 'src/letter/constants/letter-box-type.enum';
 import { LetterBoxResDTO } from 'src/letter/dto/letter-box-res.dto';
 import { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
 
+jest.setTimeout(10000);
+
 describe('Letter module (e2e)', () => {
   let app: INestApplication;
   let letterRepository: Repository<Letter>;

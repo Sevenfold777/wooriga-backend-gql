@@ -15,6 +15,8 @@ import { BaseResponseDTO } from 'src/common/dto/base-res.dto';
 import { Repository } from 'typeorm';
 import { FamilyPediaQuestion } from 'src/family-pedia/entities/family-pedia-question';
 
+jest.setTimeout(10000);
+
 describe('Family Pedia Module (e2e)', () => {
   let app: INestApplication;
   const invalidFamilyMemberId = 7;

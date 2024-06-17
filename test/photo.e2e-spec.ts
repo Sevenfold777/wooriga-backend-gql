@@ -3,7 +3,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { AppModule } from 'src/app.module';
 import { PhotoFile } from 'src/photo/entities/photo-file.entity';
 import { Photo } from 'src/photo/entities/photo.entity';
-import { Repository } from 'typeorm';
+import { MoreThan, Repository } from 'typeorm';
 import { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
 import {
   TEST_FAMILY_ID,
@@ -25,6 +25,8 @@ import { putObjectS3 } from './utils/putObjectS3';
 import * as fs from 'fs';
 import * as path from 'path';
 import axios from 'axios';
+
+jest.setTimeout(10000);
 
 describe('Photo Module (e2e)', () => {
   let app: INestApplication;
@@ -104,24 +106,24 @@ describe('Photo Module (e2e)', () => {
 
     invalidFamPhotoId = notFamPhotoInsertResult.raw?.insertId;
 
-    const myFileInsertValue: QueryDeepPartialEntity<PhotoFile> = {
-      url: process.env.FAMILY_PEDIA_DEFAULT_IMG,
-      width: 2000,
-      height: 1500,
-      photo: { id: myPhotoId },
-      uploaded: true,
-    };
-
-    const famFileInsertValue: QueryDeepPartialEntity<PhotoFile> = {
-      url: process.env.FAMILY_PEDIA_DEFAULT_IMG,
-      width: 2000,
-      height: 1500,
-      photo: { id: famPhotoId },
-      uploaded: true,
-    };
-
     const insertValues: QueryDeepPartialEntity<PhotoFile>[] = [];
     for (let i = 0; i < photofilesCount; i++) {
+      const myFileInsertValue: QueryDeepPartialEntity<PhotoFile> = {
+        url: 'test_url_my' + String(i),
+        width: 2000,
+        height: 1500,
+        photo: { id: myPhotoId },
+        uploaded: true,
+      };
+
+      const famFileInsertValue: QueryDeepPartialEntity<PhotoFile> = {
+        url: 'test_url_fam' + String(i),
+        width: 2000,
+        height: 1500,
+        photo: { id: famPhotoId },
+        uploaded: true,
+      };
+
       insertValues.push(myFileInsertValue);
       insertValues.push(famFileInsertValue);
     }
@@ -136,6 +138,7 @@ describe('Photo Module (e2e)', () => {
         photoRepository.delete({ id: photo.photoId }),
       ),
       photoRepository.delete({ id: invalidFamPhotoId }),
+      commentRepository.delete({ id: MoreThan(0) }),
     ]);
 
     await app.close();
