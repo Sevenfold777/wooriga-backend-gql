@@ -96,6 +96,7 @@ describe('Photo Module (e2e)', () => {
       width: 2000,
       height: 1500,
       photo: { id: myPhotoId },
+      uploaded: true,
     };
 
     const famFileInsertValue: QueryDeepPartialEntity<PhotoFile> = {
@@ -103,6 +104,7 @@ describe('Photo Module (e2e)', () => {
       width: 2000,
       height: 1500,
       photo: { id: famPhotoId },
+      uploaded: true,
     };
 
     const insertValues: QueryDeepPartialEntity<PhotoFile>[] = [];

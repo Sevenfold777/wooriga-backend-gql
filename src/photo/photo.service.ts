@@ -466,7 +466,7 @@ export class PhotoService {
     } catch (e) {
       // metadata를 얻을 수 없다고 해서 전체 findPhotos가 동작 실패하지는 않도록 에러 핸들링
       // TODO: front 단에서도, metadata 구하는 중 에러 발생시 metadata 각 필드에 null 들어갈 수 있다는 것 알아야
-      console.error(e.message);
+      console.error(e);
       return { thumbnailUrl: null, filesCount: null };
     }
   }
@@ -519,7 +519,7 @@ export class PhotoService {
 
       return res;
     } catch (e) {
-      console.error(e.message);
+      console.error(e);
       return { commentsCount: null, commentsPreview: null };
     }
   }

@@ -49,7 +49,7 @@ export class FamilyPediaResolver {
   @Query(() => ProfilePhotosResDTO)
   findProfilePhotos(
     @AuthUser() user: AuthUserId,
-    @Args() pediaId: number,
+    @Args('pediaId', { type: () => Int }) pediaId: number,
   ): Promise<ProfilePhotosResDTO> {
     return this.familyPediaService.findProfilePhotos(user, pediaId);
   }
