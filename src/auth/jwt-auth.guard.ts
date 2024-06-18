@@ -20,8 +20,6 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
   canActivate(
     context: ExecutionContext,
   ): boolean | Promise<boolean> | Observable<boolean> {
-    const request = context.switchToHttp().getRequest();
-
     const isPublic = this.reflector.getAllAndOverride(IS_PUBLIC_KEY, [
       context.getHandler(),
       context.getClass(),
@@ -29,15 +27,6 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
 
     if (isPublic) {
       return true;
-    }
-
-    const isAdmin = this.reflector.getAllAndOverride(IS_ADMIN_KEY, [
-      context.getHandler(),
-      context.getClass(),
-    ]);
-
-    if (isAdmin) {
-      request['isAdmin'] = Boolean(isAdmin);
     }
 
     return super.canActivate(context);
@@ -51,6 +40,18 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
    */
   getRequest(context: ExecutionContext) {
     const gqlContext = GqlExecutionContext.create(context).getContext();
+
+    const request = gqlContext.req;
+
+    const isAdmin = this.reflector.getAllAndOverride(IS_ADMIN_KEY, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
+
+    if (isAdmin) {
+      request['isAdmin'] = true;
+    }
+
     return gqlContext.req;
   }
 }

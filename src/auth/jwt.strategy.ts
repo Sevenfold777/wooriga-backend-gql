@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { AuthUserId } from './constants/auth-user-id.type';
@@ -20,15 +20,13 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     const user = { userId, familyId };
 
     // admin api일 경우 DB 체크
-    // if (req.isAdmin) {
-    //   const admin = await this.adminRepository.findOne({
-    //     where: { userId },
-    //   });
+    if (req['isAdmin']) {
+      const adminList: number[] = JSON.parse(process.env.ADMIN_USER_LIST);
 
-    //   if (!admin) {
-    //     throw new UnauthorizedException();
-    //   }
-    // }
+      if (!adminList.includes(userId)) {
+        throw new UnauthorizedException();
+      }
+    }
 
     return user; // payload의 모든 protperty를 포함하는 객체를 리턴하면 됨
   }
