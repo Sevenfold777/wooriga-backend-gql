@@ -14,6 +14,7 @@ import { CreateResDTO } from 'src/common/dto/create-res.dto';
 import { BaseResponseDTO } from 'src/common/dto/base-res.dto';
 import { Repository } from 'typeorm';
 import { FamilyPediaQuestion } from 'src/family-pedia/entities/family-pedia-question';
+import { LoggingInterceptor } from 'src/common/logging.interceptor';
 
 jest.setTimeout(10000);
 
@@ -32,6 +33,7 @@ describe('Family Pedia Module (e2e)', () => {
     questionRepository = moduleFixture.get('FamilyPediaQuestionRepository');
 
     app.useGlobalPipes(new ValidationPipe({ transform: true }));
+    app.useGlobalInterceptors(new LoggingInterceptor());
 
     await app.init();
   });

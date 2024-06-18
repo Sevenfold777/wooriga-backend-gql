@@ -14,6 +14,7 @@ import { Repository } from 'typeorm';
 import { DailyEmotion } from 'src/daily-emotion/entities/daily-emotion.entity';
 import { DailyEmosResDTO } from 'src/daily-emotion/dto/daily-emos-res.dto';
 import { DailyEmoByDateResDTO } from 'src/daily-emotion/dto/daily-emo-by-date-res.dto';
+import { LoggingInterceptor } from 'src/common/logging.interceptor';
 
 jest.setTimeout(10000);
 
@@ -42,6 +43,7 @@ describe('Daily Emotion Module (e2e)', () => {
     dailyEmoRepository = moduleFixture.get('DailyEmotionRepository');
 
     app.useGlobalPipes(new ValidationPipe({ transform: true }));
+    app.useGlobalInterceptors(new LoggingInterceptor());
 
     await app.init();
   });

@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import * as request from 'supertest';
 import { AppModule } from './../src/app.module';
+import { LoggingInterceptor } from 'src/common/logging.interceptor';
 
 describe('AppController (e2e)', () => {
   let app: INestApplication;
@@ -13,6 +14,8 @@ describe('AppController (e2e)', () => {
 
     app = moduleFixture.createNestApplication();
     app.useGlobalPipes(new ValidationPipe({ transform: true }));
+    app.useGlobalInterceptors(new LoggingInterceptor());
+
     await app.init();
   });
 

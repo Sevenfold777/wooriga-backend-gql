@@ -25,6 +25,7 @@ import { putObjectS3 } from './utils/putObjectS3';
 import * as fs from 'fs';
 import * as path from 'path';
 import axios from 'axios';
+import { LoggingInterceptor } from 'src/common/logging.interceptor';
 
 jest.setTimeout(10000);
 
@@ -62,6 +63,7 @@ describe('Photo Module (e2e)', () => {
     commentRepository = moduleFixture.get('PhotoCommentRepository');
 
     app.useGlobalPipes(new ValidationPipe({ transform: true }));
+    app.useGlobalInterceptors(new LoggingInterceptor());
 
     await app.init();
 

@@ -19,6 +19,7 @@ import { LetterResDTO } from 'src/letter/dto/letter-res.dto';
 import { LetterBoxType } from 'src/letter/constants/letter-box-type.enum';
 import { LetterBoxResDTO } from 'src/letter/dto/letter-box-res.dto';
 import { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
+import { LoggingInterceptor } from 'src/common/logging.interceptor';
 
 jest.setTimeout(10000);
 
@@ -42,6 +43,7 @@ describe('Letter module (e2e)', () => {
     letterGuideRepository = app.get('LetterGuideRepository');
 
     app.useGlobalPipes(new ValidationPipe({ transform: true }));
+    app.useGlobalInterceptors(new LoggingInterceptor());
 
     await app.init();
   });

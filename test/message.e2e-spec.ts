@@ -11,6 +11,7 @@ import { MsgCommentsResDTO } from 'src/message/dto/message-comments-res.dto';
 import { Repository } from 'typeorm';
 import { MessageComment } from 'src/message/entities/message-comment.entity';
 import { CommentStatus } from 'src/common/constants/comment-status.enum';
+import { LoggingInterceptor } from 'src/common/logging.interceptor';
 
 jest.setTimeout(10000);
 
@@ -32,6 +33,7 @@ describe('Message Module (e2e)', () => {
     commentRepository = moduleFixture.get('MessageCommentRepository');
 
     app.useGlobalPipes(new ValidationPipe({ transform: true }));
+    app.useGlobalInterceptors(new LoggingInterceptor());
 
     await app.init();
   });
