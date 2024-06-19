@@ -1,5 +1,5 @@
 import { RedisFamilyMemberService } from './../redis-family-member/redis-family-member.service';
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { CreateNotificationReqDTO } from './dto/create-notification-req.dto';
 import { CustomValidate } from 'src/common/utils/custom-validate.decorator';
@@ -25,6 +25,8 @@ import {
 
 @Injectable()
 export class NotificationService {
+  private logger = new Logger('Notification Service');
+
   constructor(
     @InjectRepository(Notification)
     private notificationRepository: Repository<Notification>,
@@ -63,7 +65,7 @@ export class NotificationService {
         .updateEntity(false)
         .execute();
     } catch (e) {
-      console.error('ERROR ', e.message);
+      this.logger.error(e);
     }
   }
 
@@ -85,7 +87,7 @@ export class NotificationService {
 
       return this.redisFamilyMemberService.setItem(redisFamilyMember);
     } catch (e) {
-      console.error(e.message);
+      this.logger.error(e);
     }
   }
 
@@ -115,7 +117,7 @@ export class NotificationService {
         this.redisFamilyMemberService.setItem(redisFamilyMember),
       ]);
     } catch (e) {
-      console.error(e.message);
+      this.logger.error(e);
     }
   }
 
@@ -129,7 +131,7 @@ export class NotificationService {
     try {
       await this.redisFamilyMemberService.deleteUserItem({ familyId, userId });
     } catch (e) {
-      console.error(e);
+      this.logger.error(e);
     }
   }
 

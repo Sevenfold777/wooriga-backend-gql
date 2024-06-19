@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { PaginationReqDTO } from 'src/common/dto/pagination-req.dto';
 import { MessageComment } from 'src/message/entities/message-comment.entity';
@@ -21,6 +21,8 @@ import { MessageDetailResDTO } from '../dto/message-detail-res.dto';
 
 @Injectable()
 export class MessageService {
+  private logger = new Logger('Admin Message Service');
+
   constructor(
     private readonly sqsNotificationService: SqsNotificationService,
     @InjectDataSource() private readonly dataSource: DataSource,
@@ -74,7 +76,6 @@ export class MessageService {
 
   async getMsgDetail(id: number): Promise<MessageDetailResDTO> {
     try {
-      console.time();
       // 1. message info (TODO: message list와 중복, front와 합의 후 생략)
       const sentCountAlias = 'sentCount';
 
@@ -122,8 +123,6 @@ export class MessageService {
       messageWithStat.commentsCount = commentsCount;
       messageWithStat.commentAuthorsCount = authorsCount;
       messageWithStat.keepsCount = keepsCount;
-
-      console.timeEnd();
 
       return { result: true, messageWithStat };
     } catch (e) {
@@ -227,8 +226,8 @@ export class MessageService {
           .execute();
 
         insertResult.raw?.affectedRows === 0
-          ? console.error('No messagefamilies inserted.', insertResult)
-          : console.log(insertResult);
+          ? this.logger.error('No messagefamilies inserted.', insertResult)
+          : this.logger.log(insertResult);
 
         // 4. 알림: sqs notif 요청
         const sqsDTO = new SqsNotificationProduceDTO(
@@ -242,7 +241,7 @@ export class MessageService {
       await queryRunner.commitTransaction();
     } catch (e) {
       await queryRunner.rollbackTransaction();
-      console.error(e.message);
+      this.logger.error(e.message);
     } finally {
       await queryRunner.release();
     }

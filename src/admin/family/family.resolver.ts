@@ -22,7 +22,7 @@ export class FamilyResolver {
     return this.familyService.getFamilyDetails(paginationReqDTO);
   }
 
-  @ResolveField(() => [User], { name: 'users', nullable: true })
+  @ResolveField(() => [User], { name: 'members', nullable: true })
   getUsers(@Parent() family: Family): Promise<User[]> {
     return this.familyService.getUsers(family);
   }

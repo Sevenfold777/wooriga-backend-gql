@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as DataLoader from 'dataloader';
 import { PaginationReqDTO } from 'src/common/dto/pagination-req.dto';
@@ -11,6 +11,8 @@ import { FamilyDetailsResDTO } from '../dto/family-details-res.dto';
 
 @Injectable()
 export class FamilyService {
+  private logger = new Logger('Admin Family Service');
+
   constructor(
     @InjectRepository(User) private readonly userRepository: Repository<User>,
     @InjectRepository(Family)
@@ -55,7 +57,7 @@ export class FamilyService {
       return users;
     } catch (e) {
       // user 탐색 에러 때문에 전체 프로세스가 실패하지 않도록 빈 배열 반환
-      console.error(e);
+      this.logger.error(e);
       return [];
     }
   }

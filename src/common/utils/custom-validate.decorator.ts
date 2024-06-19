@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
 import { validate, validateOrReject } from 'class-validator';
 
@@ -15,6 +16,7 @@ export function CustomValidate<T extends object>(
     targetName: string,
     descriptor: TypedPropertyDescriptor<any>,
   ) {
+    const logger = new Logger('@CustomValidate');
     const method = descriptor.value;
 
     descriptor.value = async function (...args: any[]) {
@@ -41,7 +43,7 @@ export function CustomValidate<T extends object>(
         }
 
         if (invalidList.length > 0) {
-          console.error(errorMessage);
+          logger.error(errorMessage);
         }
 
         args[0] = validList;

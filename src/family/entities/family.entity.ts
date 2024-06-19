@@ -11,9 +11,7 @@ export class Family extends CoreEntity {
   @Field(() => [User])
   users: User[];
 
-  @OneToMany(() => MessageFamily, (messageFamily) => messageFamily.family, {
-    eager: false,
-  })
+  @OneToMany(() => MessageFamily, (messageFamily) => messageFamily.family)
   messages: MessageFamily[];
 
   //   @OneToMany(() => Photo, (photo) => photo.family)

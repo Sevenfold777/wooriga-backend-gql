@@ -1,7 +1,6 @@
 import { Args, Query, Resolver } from '@nestjs/graphql';
 import { UserService } from './user.service';
 import { User } from 'src/user/entities/user.entity';
-import { BaseResponseDTO } from 'src/common/dto/base-res.dto';
 import { PaginationReqDTO } from 'src/common/dto/pagination-req.dto';
 import { CountResDTO } from '../dto/count-res.dto';
 import { DauListResDTO } from '../dto/dau-list-res.dto';

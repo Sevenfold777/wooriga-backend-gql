@@ -1,5 +1,5 @@
 import { SqsNotificationService } from './../sqs-notification/sqs-notification.service';
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DAU } from 'src/admin/entities/dau.entity';
@@ -18,6 +18,8 @@ import { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity
 
 @Injectable()
 export class SchedulerService {
+  private logger = new Logger('Scheduler');
+
   constructor(
     private readonly sqsNotificationService: SqsNotificationService,
     @InjectDataSource() private dataSource: DataSource,
@@ -96,7 +98,7 @@ export class SchedulerService {
           .execute();
 
         insertResult.raw?.affectedRows === 0
-          ? console.error('No messagefamilies inserted.', insertResult)
+          ? this.logger.error('No messagefamilies inserted.', insertResult)
           : console.log(insertResult);
 
         // 4. 알림: sqs notif 요청
@@ -111,7 +113,7 @@ export class SchedulerService {
       await queryRunner.commitTransaction();
     } catch (e) {
       await queryRunner.rollbackTransaction();
-      console.error(e.message);
+      this.logger.error(e.message);
     } finally {
       await queryRunner.release();
     }
@@ -204,7 +206,7 @@ export class SchedulerService {
       await queryRunner.commitTransaction();
     } catch (e) {
       await queryRunner.rollbackTransaction();
-      console.error(e.message);
+      this.logger.error(e.message);
     } finally {
       await queryRunner.release();
     }
@@ -393,7 +395,9 @@ export class SchedulerService {
       await queryRunner.commitTransaction();
     } catch (e) {
       await queryRunner.rollbackTransaction();
-      console.error('Error occurred while getting active users statistics.');
+      this.logger.error(
+        'Error occurred while getting active users statistics.',
+      );
     } finally {
       await queryRunner.release();
     }

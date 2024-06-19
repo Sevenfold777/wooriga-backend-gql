@@ -1,4 +1,4 @@
-import { Injectable, OnModuleDestroy } from '@nestjs/common';
+import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
 import { Redis } from 'ioredis';
 import { CustomValidate } from 'src/common/utils/custom-validate.decorator';
 import { RedisFamilyMember } from './entities/redis-family-member.entity';
@@ -11,6 +11,8 @@ export class RedisFamilyMemberService implements OnModuleDestroy {
 
   private readonly FAMILY_ID_PREFIX = 'family:';
   private readonly USER_ID_PREFIX = 'user:';
+
+  private logger = new Logger('Redis');
 
   constructor() {
     this.redis = new Redis({
@@ -34,7 +36,7 @@ export class RedisFamilyMemberService implements OnModuleDestroy {
 
       await this.redis.hset(familyKey, { [userKey]: hashValue });
     } catch (e) {
-      console.error('Failed to set item to redis family member table.', e);
+      this.logger.error('Failed to set item to redis family member table.', e);
     }
   }
 
@@ -50,7 +52,7 @@ export class RedisFamilyMemberService implements OnModuleDestroy {
       // (item이 여러 개여도 그 수가 적다면 성능 상 문제가 마약하기에 del과 동일하게 동작할 수 있음)
       await this.redis.unlink(familyKey);
     } catch (e) {
-      console.error(
+      this.logger.error(
         'Failed to unlink family from redis family member table.',
         e,
       );
@@ -72,7 +74,10 @@ export class RedisFamilyMemberService implements OnModuleDestroy {
       // 서비스의 특성상 하나의 family에 한 자리 수의 매우 적은 user가 할당되므로 O(1)이라고 볼 수 있음
       await this.redis.hdel(familyKey, userKey);
     } catch (e) {
-      console.error('Failed to unlink user from redis family member table.', e);
+      this.logger.error(
+        'Failed to unlink user from redis family member table.',
+        e,
+      );
     }
   }
 

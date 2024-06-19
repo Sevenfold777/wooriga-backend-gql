@@ -97,7 +97,7 @@ describe('Family Module (e2e)', () => {
           body: { data: { findMyFamily: FamilyResDTO } };
         }) => {
           expect(result).toBe(true);
-          expect(error).toBe(null);
+          expect(error).toBeNull();
           expect(family.id).toBe(TEST_FAMILY_ID);
           expect(family.users.map((user) => user.id)).not.toContain(
             TEST_USER_ID,

@@ -43,7 +43,7 @@ export async function convertSolarToLunarDate(solarDate: Date): Promise<Date> {
       new Date(`${lunYear}-${lunMonth}-${lunDay}`).toLocaleDateString('ko-KR'),
     );
   } catch (e) {
-    console.error(e.message);
+    console.error('[convert solar to lunar date]', e.message);
     return undefined;
   }
 }

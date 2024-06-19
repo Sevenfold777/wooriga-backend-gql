@@ -1,6 +1,6 @@
 import { PhotoFileUploadCompletedReqDTO } from './dto/photo-file-upload-completed-req.dto';
 import { SqsNotificationService } from './../sqs-notification/sqs-notification.service';
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { BaseResponseDTO } from 'src/common/dto/base-res.dto';
 import { PaginationReqDTO } from 'src/common/dto/pagination-req.dto';
 import { EditPhotoReqDTO } from './dto/edit-photo-req.dto';
@@ -32,6 +32,8 @@ import { GetPresignedUrlResDTO } from 'src/s3/dto/get-presigned-url-res.dto';
 
 @Injectable()
 export class PhotoService {
+  private logger = new Logger('Photo Service');
+
   constructor(
     @InjectDataSource() private dataSource: DataSource,
     @InjectRepository(Photo) private photoRepository: Repository<Photo>,
@@ -484,7 +486,7 @@ export class PhotoService {
     } catch (e) {
       // metadata를 얻을 수 없다고 해서 전체 findPhotos가 동작 실패하지는 않도록 에러 핸들링
       // TODO: front 단에서도, metadata 구하는 중 에러 발생시 metadata 각 필드에 null 들어갈 수 있다는 것 알아야
-      console.error(e);
+      this.logger.error('GraphQL Resolved Field', e);
 
       return { thumbnailUrl: null, filesCount: null };
     }
@@ -538,7 +540,7 @@ export class PhotoService {
 
       return res;
     } catch (e) {
-      console.error(e);
+      this.logger.error('GraphQL Resolved Field', e);
       return { commentsCount: null, commentsPreview: null };
     }
   }
