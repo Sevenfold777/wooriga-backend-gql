@@ -61,7 +61,7 @@ export class FamilyPediaService {
       }
 
       const endpoint = presignedUrl.url
-        .replace(/^(https?:\/\/[^\/]+\.com)/, '')
+        .replace(/^(https?:\/\/[^\/]+\.com\/)/, '')
         .split('?')[0];
 
       await this.profilePhotoRepository
@@ -72,11 +72,12 @@ export class FamilyPediaService {
           url: endpoint,
           familyPedia: { ownerId: pediaId },
         })
+        .updateEntity(false)
         .execute();
 
       // 알림은 파일 업로드 완료 후 처리
 
-      return { result: true, presignedUrl: presignedUrl.url };
+      return { result: true, presignedUrl: presignedUrl.url, pediaId };
     } catch (e) {
       return { result: false, error: e.message };
     }
@@ -84,7 +85,7 @@ export class FamilyPediaService {
 
   async profilePhotoUploadCompleted(
     { familyId }: AuthUserId,
-    { pediaId, url }: ProfilePhotoUploadCompletedReqDTO,
+    { pediaId, url, width, height }: ProfilePhotoUploadCompletedReqDTO,
   ): Promise<BaseResponseDTO> {
     try {
       // pedia owner가 나의 가족인지 확인
@@ -94,12 +95,15 @@ export class FamilyPediaService {
         throw new Error('Not authorized to update the profile photo.');
       }
 
+      // 엔드포인트만 넘겨 받는 게 규약이지만, 앱단에서 실수할 가능성 높기에 이중 필터
+      const strippedUrl = url.replace(/^\.com\//, '').split('?')[0];
+
       const updateResult = await this.profilePhotoRepository
         .createQueryBuilder('photo')
         .update()
-        .where('photo.familyPediaId = :pediaId', { pediaId })
-        .andWhere('photo.url = :url', { url })
-        .set({ uploaded: true })
+        .where('familyPediaId = :pediaId', { pediaId })
+        .andWhere('url = :url', { url: strippedUrl })
+        .set({ uploaded: true, width, height })
         .updateEntity(false)
         .execute();
 
@@ -110,7 +114,7 @@ export class FamilyPediaService {
       const updatePediaResult = await this.pediaRepository
         .createQueryBuilder('pedia')
         .update()
-        .where('pedia.owner.id = :pediaId', { pediaId })
+        .where('ownerId = :pediaId', { pediaId })
         .set({ profilePhoto: url })
         .updateEntity(false)
         .execute();
@@ -138,16 +142,35 @@ export class FamilyPediaService {
     pediaId: number,
   ): Promise<ProfilePhotosResDTO> {
     try {
+      // check if in same family
+      const pediaExist = await this.pediaFamValidate(pediaId, familyId);
+
+      if (!pediaExist) {
+        throw new Error('Cannot get profile photos of the pedia.');
+      }
+
       const profilePhotos = await this.profilePhotoRepository
         .createQueryBuilder('photo')
         .select()
         .innerJoin('photo.familyPedia', 'pedia', 'pedia.ownerId = :pediaId', {
           pediaId,
         })
-        .where('pedia.familyId = :familyId', { familyId })
-        .andWhere('photo.uploaded = true')
+        .where('photo.uploaded = true')
         .orderBy('id', 'DESC')
         .getMany();
+
+      if (profilePhotos.length === 0) {
+        const defaultPhoto = new FamilyPediaProfilePhoto();
+
+        defaultPhoto.id = 0;
+        defaultPhoto.url = process.env.FAMILY_PEDIA_DEFAULT_IMG;
+        defaultPhoto.width = 2000;
+        defaultPhoto.height = 1500;
+        defaultPhoto.uploaded = true;
+        defaultPhoto.familyPediaId = pediaId;
+
+        profilePhotos.push(defaultPhoto);
+      }
 
       return { result: true, profilePhotos };
     } catch (e) {
@@ -177,8 +200,8 @@ export class FamilyPediaService {
       const deleteResult = await this.profilePhotoRepository
         .createQueryBuilder('photo')
         .delete()
-        .where('photo.id = :photoId', { photoId })
-        .andWhere('photo.familyPediaId = :userId', { userId })
+        .where('id = :photoId', { photoId })
+        .andWhere('familyPediaId = :userId', { userId })
         .execute();
 
       if (deleteResult.affected !== 1) {
@@ -189,7 +212,7 @@ export class FamilyPediaService {
         const updateResult = await this.pediaRepository
           .createQueryBuilder('pedia')
           .update()
-          .where('pedia.owner.id = :userId', { userId })
+          .where('ownerId = :userId', { userId })
           .set({ profilePhoto: process.env.FAMILY_PEDIA_DEFAULT_IMG })
           .updateEntity(false)
           .execute();

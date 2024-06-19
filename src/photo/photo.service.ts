@@ -99,7 +99,7 @@ export class PhotoService {
         }
 
         const endpoint = item.url
-          .replace(/^(https?:\/\/[^\/]+\.com)/, '')
+          .replace(/^(https?:\/\/[^\/]+\.com\/)/, '')
           .split('?')[0];
 
         filesToCreate.push({
@@ -130,7 +130,7 @@ export class PhotoService {
 
   async fileUploadCompleted(
     { userId, familyId }: AuthUserId,
-    { photoId, urls }: PhotoFileUploadCompletedReqDTO,
+    { photoId, photofilesUploaded }: PhotoFileUploadCompletedReqDTO,
   ): Promise<BaseResponseDTO> {
     try {
       // validate if photo file exist
@@ -143,20 +143,29 @@ export class PhotoService {
         .andWhere('photo.author.id = :userId', { userId })
         .getOneOrFail();
 
-      const updateFilesResult = await this.fileRespository
-        .createQueryBuilder('file')
-        .update()
-        .where('photoId = :photoId', { photoId })
-        .andWhere('url IN (:...urls)', { urls })
-        .set({ uploaded: true })
-        .updateEntity(false)
-        .execute();
+      const updatePromises = photofilesUploaded.map((item) => {
+        // 엔드포인트만 넘겨 받는 게 규약이지만, 앱단에서 실수할 가능성 높기에 이중 필터
+        const strippedUrl = item.url.replace(/^\.com\//, '').split('?')[0];
 
-      if (updateFilesResult.affected !== urls.length) {
-        throw new Error(
-          `Cannot update ${urls.length - updateFilesResult.affected} photo file entities' status to uploaded.`,
-        );
-      }
+        return this.fileRespository
+          .createQueryBuilder('file')
+          .update()
+          .where('photoId = :photoId', { photoId })
+          .andWhere('url = :url', { url: strippedUrl })
+          .set({ uploaded: true, width: item.width, height: item.height })
+          .updateEntity(false)
+          .execute();
+      });
+
+      // 전부 다 성공해야 함 (c.f. Promise.allSettled)
+      const updateFileResults = await Promise.all(updatePromises);
+      updateFileResults.forEach((res) => {
+        if (res.affected !== 1) {
+          throw new Error(
+            `Cannot update some photo file entities' to uploaded.`,
+          );
+        }
+      });
 
       const updatePhotoResult = await this.photoRepository
         .createQueryBuilder()
@@ -215,11 +224,7 @@ export class PhotoService {
 
       const deleteRequests: Promise<BaseResponseDTO>[] = [];
       for (const file of files) {
-        deleteRequests.push(
-          this.s3Service.deleteFile(
-            `https://${process.env.AWS_S3_BUCKET}.s3.${process.env.AWS_DEFAULT_REGION}.amazonaws.com${file.url}`,
-          ),
-        );
+        deleteRequests.push(this.s3Service.deleteFile(file.url));
       }
 
       const results = await Promise.all(deleteRequests);

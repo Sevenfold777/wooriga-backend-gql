@@ -1,4 +1,9 @@
-import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnApplicationBootstrap,
+  OnModuleDestroy,
+} from '@nestjs/common';
 import {
   SQSClient,
   SendMessageCommand,
@@ -14,7 +19,9 @@ import { SQS_NOTIFICATION_STORE_RECEIVE_EVENT } from 'src/common/constants/event
 import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
-export class SqsNotificationService implements OnApplicationBootstrap {
+export class SqsNotificationService
+  implements OnApplicationBootstrap, OnModuleDestroy
+{
   private client: SQSClient;
   private logger = new Logger('SQS Notification');
 
@@ -34,7 +41,12 @@ export class SqsNotificationService implements OnApplicationBootstrap {
     this.receiveNotificationPayload();
   }
 
+  onModuleDestroy() {
+    this.client.destroy();
+  }
+
   async sendNotification(body: SqsNotificationProduceDTO<NotificationType>) {
+    return; // TODO: 배포 전 해제 (e2e test 용)
     try {
       const command = new SendMessageCommand({
         DelaySeconds: 0,

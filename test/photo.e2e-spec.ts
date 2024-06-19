@@ -11,7 +11,7 @@ import {
   TEST_FAMILY_USER_ID2,
   TEST_USER_ID,
 } from './utils/config';
-import { gqlAuthReq } from './utils/request';
+import { gqlAuthReq, gqlAuthReqWithVars } from './utils/request';
 import { PhotosResDTO } from 'src/photo/dto/photos-res.dto';
 import { PhotoResDTO } from 'src/photo/dto/photo-res.dto';
 import { BaseResponseDTO } from 'src/common/dto/base-res.dto';
@@ -26,6 +26,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import axios from 'axios';
 import { LoggingInterceptor } from 'src/common/logging.interceptor';
+import { PhotoFileUploaded } from 'src/photo/dto/photo-file-uploaded.dto';
 
 jest.setTimeout(10000);
 
@@ -1260,7 +1261,7 @@ describe('Photo Module (e2e)', () => {
     photo.files.sort((a, b) => a.id - b.id);
     presignedUrls.forEach((url, idx) => {
       const strippedUrl = url
-        .replace(/^(https?:\/\/[^\/]+\.com)/, '')
+        .replace(/^(https?:\/\/[^\/]+\.com\/)/, '')
         .split('?')[0];
       expect(photo.files[idx].url).toBe(strippedUrl);
     });
@@ -1277,23 +1278,37 @@ describe('Photo Module (e2e)', () => {
     const testFilePath = path.join(__dirname, 'utils', 'test-image.jpeg');
     const testFile = fs.readFileSync(testFilePath);
 
+    const testWidth = 800;
+    const testHeight = 400;
+
     const strippedUrls = presignedUrls.map(
-      (url) => url.replace(/^(https?:\/\/[^\/]+\.com)/, '').split('?')[0],
+      (url) => url.replace(/^(https?:\/\/[^\/]+\.com\/)/, '').split('?')[0],
     );
 
     await Promise.all(presignedUrls.map((url) => putObjectS3(url, testFile)));
 
     // when
+    const filesUploadedVar: PhotoFileUploaded[] = strippedUrls.map((url) => ({
+      width: testWidth,
+      height: testHeight,
+      url,
+    }));
+
+    const variables = {
+      id: presignedTgtPhotoId,
+      filesUploadedVar,
+    };
+
     const query = `
-      mutation {
-        fileUploadCompleted(photoId: ${presignedTgtPhotoId}, urls: ${JSON.stringify(strippedUrls)}) {
+      mutation fileUploadedMuation($id: Int!, $filesUploadedVar: [PhotoFileUploaded!]!) {
+        fileUploadCompleted(photoId: $id, photofilesUploaded: $filesUploadedVar) {
           result
           error
         }
       }
     `;
 
-    await gqlAuthReq(app, query)
+    await gqlAuthReqWithVars(app, query, variables)
       .expect(200)
       .expect(
         (res: { body: { data: { fileUploadCompleted: BaseResponseDTO } } }) => {
@@ -1324,6 +1339,8 @@ describe('Photo Module (e2e)', () => {
     strippedUrls.forEach((url, idx) => {
       expect(photo.files[idx].url).toBe(url);
       expect(photo.files[idx].uploaded).toBe(true);
+      expect(photo.files[idx].width).toBe(testWidth);
+      expect(photo.files[idx].height).toBe(testHeight);
     });
   });
 

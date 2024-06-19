@@ -18,3 +18,13 @@ export function gqlAuthReq(app: INestApplication<any>, query: string) {
     .set(JWT_HEADER_FIELD, `Bearer ${JWT_FOR_TEST}`)
     .send({ query });
 }
+
+export function gqlAuthReqWithVars(
+  app: INestApplication<any>,
+  query: string,
+  variables: any,
+) {
+  return httpReq(app)
+    .set(JWT_HEADER_FIELD, `Bearer ${JWT_FOR_TEST}`)
+    .send({ query, variables });
+}

@@ -61,13 +61,14 @@ export class S3Service {
     }
   }
 
-  async deleteFile(url: string): Promise<BaseResponseDTO> {
-    try {
-      const key = url.replace(/^(https?:\/\/[^\/]+\.com\/)/, '');
+  async deleteFile(key: string): Promise<BaseResponseDTO> {
+    // 엔드포인트만 넘겨 받는 게 규약이지만, 앱단에서 실수할 가능성 높기에 이중 필터
+    const strippedKey = key.replace(/^\.com\//, '').split('?')[0];
 
+    try {
       const command = new DeleteObjectCommand({
         Bucket: process.env.AWS_S3_BUCKET,
-        Key: key,
+        Key: strippedKey,
       });
 
       await this.s3Client.send(command);

@@ -19,15 +19,15 @@ export class FamilyPediaResolver {
   constructor(private readonly familyPediaService: FamilyPediaService) {}
 
   @Mutation(() => CreateProfilePhotoResDTO)
-  createProfilePhoto(
+  createPediaProfilePhoto(
     @AuthUser() user: AuthUserId,
-    @Args('id', { type: () => Int }) id: number,
+    @Args('pediaId', { type: () => Int }) pediaId: number,
   ): Promise<CreateProfilePhotoResDTO> {
-    return this.familyPediaService.createProfilePhoto(user, id);
+    return this.familyPediaService.createProfilePhoto(user, pediaId);
   }
 
   @Mutation(() => BaseResponseDTO)
-  profilePhotoUploadCompleted(
+  pediaProfilePhotoUploadCompleted(
     @AuthUser() user: AuthUserId,
     @Args()
     profilePhotoUploadCompletedReqDTO: ProfilePhotoUploadCompletedReqDTO,
@@ -39,7 +39,7 @@ export class FamilyPediaResolver {
   }
 
   @Mutation(() => BaseResponseDTO)
-  deleteProfilePhoto(
+  deletePediaProfilePhoto(
     @AuthUser() user: AuthUserId,
     @Args('photoId', { type: () => Int }) photoId: number,
   ): Promise<BaseResponseDTO> {
@@ -47,7 +47,7 @@ export class FamilyPediaResolver {
   }
 
   @Query(() => ProfilePhotosResDTO)
-  findProfilePhotos(
+  findPediaProfilePhotos(
     @AuthUser() user: AuthUserId,
     @Args('pediaId', { type: () => Int }) pediaId: number,
   ): Promise<ProfilePhotosResDTO> {

@@ -1,5 +1,7 @@
 import { ArgsType, Field, Int } from '@nestjs/graphql';
-import { IsNotEmpty, IsNumber, IsString } from 'class-validator';
+import { IsNumber, ValidateNested } from 'class-validator';
+import { PhotoFileUploaded } from './photo-file-uploaded.dto';
+import { Type } from 'class-transformer';
 
 @ArgsType()
 export class PhotoFileUploadCompletedReqDTO {
@@ -7,8 +9,8 @@ export class PhotoFileUploadCompletedReqDTO {
   @IsNumber()
   photoId: number;
 
-  @Field(() => [String])
-  @IsNotEmpty({ each: true })
-  @IsString({ each: true })
-  urls: string[];
+  @Field(() => [PhotoFileUploaded])
+  @ValidateNested({ each: true })
+  @Type(() => PhotoFileUploaded)
+  photofilesUploaded: PhotoFileUploaded[];
 }

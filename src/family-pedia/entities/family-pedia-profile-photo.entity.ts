@@ -12,11 +12,11 @@ export class FamilyPediaProfilePhoto extends CoreEntity {
 
   @Column({ nullable: true })
   @Field(() => Int)
-  profileWidth: number;
+  width: number;
 
   @Column({ nullable: true })
   @Field(() => Int)
-  profileHeight: number;
+  height: number;
 
   @Column({ name: 'familyPediaId' })
   @Field(() => Int)

@@ -58,14 +58,14 @@ describe('s3 service test', () => {
     presigendUrl = url;
 
     const endpoint = presigendUrl
-      .replace(/^(https?:\/\/[^\/]+\.com)/, '')
+      .replace(/^(https?:\/\/[^\/]+\.com\/)/, '')
       .split('?')[0];
 
     // then
     expect(result).toBe(true);
     expect(error).toBeUndefined();
     expect(endpoint).toBe(
-      `/${testDir}/${encryptedUserId}/${encryptedFileName}.jpeg`,
+      `${testDir}/${encryptedUserId}/${encryptedFileName}.jpeg`,
     );
   });
 

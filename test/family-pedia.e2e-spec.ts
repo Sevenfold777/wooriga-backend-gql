@@ -1,3 +1,4 @@
+import { CreateProfilePhotoResDTO } from './../src/family-pedia/dto/create-profile-photo-res.dto';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { AppModule } from 'src/app.module';
@@ -15,6 +16,13 @@ import { BaseResponseDTO } from 'src/common/dto/base-res.dto';
 import { Repository } from 'typeorm';
 import { FamilyPediaQuestion } from 'src/family-pedia/entities/family-pedia-question';
 import { LoggingInterceptor } from 'src/common/logging.interceptor';
+import { ProfilePhotosResDTO } from 'src/family-pedia/dto/profile-photos-res.dto';
+import { FamilyPediaProfilePhoto } from 'src/family-pedia/entities/family-pedia-profile-photo.entity';
+import { putObjectS3 } from './utils/putObjectS3';
+import * as path from 'path';
+import * as fs from 'fs';
+import { FamilyPedia } from 'src/family-pedia/entities/family-pedia.entity';
+import axios from 'axios';
 
 jest.setTimeout(10000);
 
@@ -22,7 +30,13 @@ describe('Family Pedia Module (e2e)', () => {
   let app: INestApplication;
   const invalidFamilyMemberId = 7;
   let createdQuestionId: number;
+
+  let pediaRepository: Repository<FamilyPedia>;
   let questionRepository: Repository<FamilyPediaQuestion>;
+  let profilePhotoRepository: Repository<FamilyPediaProfilePhoto>;
+
+  let presignedUrl: string;
+  let createProfilePhotoId: number;
 
   beforeAll(async () => {
     const moduleFixture = await Test.createTestingModule({
@@ -30,7 +44,11 @@ describe('Family Pedia Module (e2e)', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
+    pediaRepository = moduleFixture.get('FamilyPediaRepository');
     questionRepository = moduleFixture.get('FamilyPediaQuestionRepository');
+    profilePhotoRepository = moduleFixture.get(
+      'FamilyPediaProfilePhotoRepository',
+    );
 
     app.useGlobalPipes(new ValidationPipe({ transform: true }));
     app.useGlobalInterceptors(new LoggingInterceptor());
@@ -41,6 +59,10 @@ describe('Family Pedia Module (e2e)', () => {
   afterAll(async () => {
     try {
       await questionRepository.delete({ id: createdQuestionId });
+      // await pediaRepository.update(
+      //   { ownerId: TEST_USER_ID },
+      //   { profilePhoto: process.env.FAMILY_PEDIA_DEFAULT_IMG },
+      // );
     } catch (e) {
       console.error(e.message);
     } finally {
@@ -659,7 +681,290 @@ describe('Family Pedia Module (e2e)', () => {
   });
 
   // e2e test for profile photo edit
-  // 1. edit profile photo
-  // 2. find profile photos
-  // 3. delete profile photo
+
+  // 1. 등록된 photo 없으면 default photo 추가해서 리턴
+  it('no photo uploaded, return default photo', async () => {
+    // given
+    // pedia.ownerId = TEST_USER_ID already exists in test db
+
+    // when
+    const query = `
+      query {
+	      findPediaProfilePhotos(pediaId: ${TEST_USER_ID}) {
+          result
+          error
+          profilePhotos {
+            id
+            url
+            width
+            height
+          }
+        }
+      }
+    `;
+
+    await gqlAuthReq(app, query)
+      .expect(200)
+      .expect(
+        (res: {
+          body: { data: { findPediaProfilePhotos: ProfilePhotosResDTO } };
+        }) => {
+          const {
+            body: {
+              data: {
+                findPediaProfilePhotos: { result, error, profilePhotos },
+              },
+            },
+          } = res;
+
+          // then
+          expect(result).toBe(true);
+          expect(error).toBeNull();
+          expect(profilePhotos.length).toBe(1);
+
+          expect(profilePhotos[0].id).toBe(0);
+          expect(profilePhotos[0].url).toBe(
+            process.env.FAMILY_PEDIA_DEFAULT_IMG,
+          );
+          expect(profilePhotos[0].height).toBe(1500);
+          expect(profilePhotos[0].width).toBe(2000);
+        },
+      );
+  });
+
+  // 2. create profile photo
+  it('create profile photo', async () => {
+    // given
+
+    // when
+    const query = `
+      mutation {
+        createPediaProfilePhoto(pediaId: ${TEST_USER_ID}) {
+          result
+          error
+          presignedUrl
+          pediaId
+        }
+      }
+    `;
+
+    await gqlAuthReq(app, query)
+      .expect(200)
+      .expect(
+        (res: {
+          body: { data: { createPediaProfilePhoto: CreateProfilePhotoResDTO } };
+        }) => {
+          const {
+            body: {
+              data: {
+                createPediaProfilePhoto: {
+                  result,
+                  error,
+                  presignedUrl: returnedUrl,
+                  pediaId,
+                },
+              },
+            },
+          } = res;
+
+          expect(result).toBe(true);
+          expect(error).toBeNull();
+          expect(returnedUrl).not.toBeNull();
+          expect(pediaId).toBe(TEST_USER_ID);
+
+          presignedUrl = returnedUrl;
+        },
+      );
+
+    // then
+    const strippedUrl = presignedUrl
+      .replace(/^(https?:\/\/[^\/]+\.com\/)/, '')
+      .split('?')[0];
+
+    const profilePhoto = await profilePhotoRepository.find({
+      where: { familyPediaId: TEST_USER_ID },
+      order: { id: 'DESC' },
+      take: 1,
+    });
+
+    expect(profilePhoto.length).toBe(1);
+    expect(profilePhoto[0].url).toBe(strippedUrl);
+    expect(profilePhoto[0].uploaded).toBe(false);
+
+    // 뒷정리
+    // const deleteResult = await profilePhotoRepository.delete({
+    //   familyPediaId: TEST_USER_ID,
+    // });
+
+    // expect(deleteResult.affected).toBe(1);
+  });
+
+  // 3. upload completed
+  it('upload completed', async () => {
+    // given
+    // 위 create photo 테스트에서 생성된 presignedUrls
+    const testFilePath = path.join(__dirname, 'utils', 'test-image.jpeg');
+    const testFile = fs.readFileSync(testFilePath);
+
+    await putObjectS3(presignedUrl, testFile);
+
+    const strippedUrl = presignedUrl
+      .replace(/^(https?:\/\/[^\/]+\.com\/)/, '')
+      .split('?')[0];
+
+    const testWidth = 800;
+    const testHeight = 400;
+
+    // when
+    const query = `
+      mutation {
+        pediaProfilePhotoUploadCompleted(pediaId: ${TEST_USER_ID}, url: "${strippedUrl}", width: ${testWidth}, height: ${testHeight}) {
+          result
+          error
+        }
+      }
+    `;
+
+    await gqlAuthReq(app, query)
+      .expect(200)
+      .expect(
+        (res: {
+          body: { data: { pediaProfilePhotoUploadCompleted: BaseResponseDTO } };
+        }) => {
+          const {
+            body: {
+              data: {
+                pediaProfilePhotoUploadCompleted: { result, error },
+              },
+            },
+          } = res;
+
+          expect(result).toBe(true);
+          expect(error).toBeNull();
+        },
+      );
+
+    // then
+    const profilePhoto = await profilePhotoRepository.find({
+      where: { familyPediaId: TEST_USER_ID },
+      order: { id: 'DESC' },
+      take: 1,
+    });
+
+    expect(profilePhoto.length).toBe(1);
+    expect(profilePhoto[0].url).toBe(strippedUrl);
+    expect(profilePhoto[0].uploaded).toBe(true);
+    expect(profilePhoto[0].width).toBe(testWidth);
+    expect(profilePhoto[0].height).toBe(testHeight);
+
+    createProfilePhotoId = profilePhoto[0].id;
+
+    const pedia = await pediaRepository.findOne({
+      where: { ownerId: TEST_USER_ID },
+    });
+
+    expect(pedia.profilePhoto).toBe(strippedUrl);
+  });
+
+  // 4. find photos 성공
+  it('find photos - after upload', async () => {
+    // given
+    // pedia.ownerId = TEST_USER_ID already exists in test db
+
+    // when
+    const query = `
+      query {
+	      findPediaProfilePhotos(pediaId: ${TEST_USER_ID}) {
+          result
+          error
+          profilePhotos {
+            id
+            url
+          }
+        }
+      }
+    `;
+
+    await gqlAuthReq(app, query)
+      .expect(200)
+      .expect(
+        (res: {
+          body: { data: { findPediaProfilePhotos: ProfilePhotosResDTO } };
+        }) => {
+          const {
+            body: {
+              data: {
+                findPediaProfilePhotos: { result, error, profilePhotos },
+              },
+            },
+          } = res;
+
+          // then
+          expect(result).toBe(true);
+          expect(error).toBeNull();
+          expect(profilePhotos.length).toBe(1);
+
+          const strippedUrl = presignedUrl
+            .replace(/^(https?:\/\/[^\/]+\.com\/)/, '')
+            .split('?')[0];
+
+          expect(profilePhotos[0].id).toBeGreaterThan(1);
+          expect(profilePhotos[0].url).toBe(strippedUrl);
+          // expect(profilePhotos[0].height).toBe(1500);
+          // expect(profilePhotos[0].width).toBe(2000);
+        },
+      );
+  });
+
+  // 5. 업로드 한 사진 삭제
+  it('delete photo', async () => {
+    // given
+
+    // when
+    const query = `
+      mutation {
+        deletePediaProfilePhoto(photoId: ${createProfilePhotoId}) {
+          result
+          error
+        }
+      }
+    `;
+
+    await gqlAuthReq(app, query)
+      .expect(200)
+      .expect(
+        (res: {
+          body: { data: { deletePediaProfilePhoto: BaseResponseDTO } };
+        }) => {
+          const {
+            body: {
+              data: {
+                deletePediaProfilePhoto: { result, error },
+              },
+            },
+          } = res;
+
+          expect(result).toBe(true);
+          expect(error).toBeNull();
+        },
+      );
+
+    // then
+    const profilePhoto = await profilePhotoRepository.findOne({
+      where: { id: createProfilePhotoId },
+    });
+
+    expect(profilePhoto).toBeNull();
+
+    const pedia = await pediaRepository.findOne({
+      where: { ownerId: TEST_USER_ID },
+    });
+
+    expect(pedia.profilePhoto).toBe(process.env.FAMILY_PEDIA_DEFAULT_IMG);
+
+    const targetUrl = presignedUrl.split('?')[0];
+    axios.get(targetUrl).catch((err) => {
+      expect(err.response.status).toBe(403);
+    });
+  });
 });
