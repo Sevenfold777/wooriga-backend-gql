@@ -1,5 +1,4 @@
 import { Injectable } from '@nestjs/common';
-import { BaseResponseDTO } from 'src/common/dto/base-res.dto';
 import { Family } from './entities/family.entity';
 import { AuthUserId } from 'src/auth/constants/auth-user-id.type';
 import { InviteFamilyResDTO } from './dto/invite-family-res.dto';
@@ -12,6 +11,9 @@ import { FamilyResDTO } from './dto/family-res.dto';
 import { CreateResDTO } from 'src/common/dto/create-res.dto';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { FAMILY_JOIN_EVENT } from 'src/common/constants/events';
+import { TOKEN_TYPE } from 'src/auth/constants/token-type.enum';
+import { UserAuth } from 'src/user/entities/user-auth.entity';
+import { JoinFamilyResDTO } from './dto/join-family-res.dto';
 
 @Injectable()
 export class FamilyService {
@@ -20,6 +22,8 @@ export class FamilyService {
     private readonly dataSource: DataSource,
     @InjectRepository(Family) private familyRepository: Repository<Family>,
     @InjectRepository(User) private userRepository: Repository<User>,
+    @InjectRepository(UserAuth)
+    private userAuthRepository: Repository<UserAuth>,
     @InjectRepository(MessageFamily)
     private messageRepository: Repository<MessageFamily>,
     private eventEmitter: EventEmitter2,
@@ -107,7 +111,7 @@ export class FamilyService {
   async joinFamily(
     { userId, familyId: familyToBeMerged }: AuthUserId,
     familyToken: string,
-  ): Promise<BaseResponseDTO> {
+  ): Promise<JoinFamilyResDTO> {
     const queryRunner = this.dataSource.createQueryRunner();
 
     queryRunner.connect();
@@ -136,19 +140,31 @@ export class FamilyService {
         throw new Error('Family Join failed.');
       }
 
-      /**
-       * TODO: update userAuth.refreshToken
-       * 기존에는 joinFamily 함수에서 다 했지만
-       * 기능 분리 가능
-       */
+      const accessTokenNew = this.authService.sign({
+        userId,
+        familyId: familyToJoin,
+        tokenType: TOKEN_TYPE.ACCESS,
+      });
 
-      /**
-       * TOOD: member 없는 family 정리 로직 구현
-       * 기존에는 joinFamily 함수에서 다 했지만,
-       * 기능 분리 필요할 듯
-       * 1안. 별도 함수
-       * 2안. scheduler 사용 (Batch job mocking)
-       */
+      const refreshTokenNew = this.authService.sign({
+        userId,
+        familyId: familyToJoin,
+        tokenType: TOKEN_TYPE.REFRESH,
+      });
+
+      const updateAuth = await this.userAuthRepository
+        .createQueryBuilder('auth')
+        .update()
+        .where('userId = : userId', { userId })
+        .set({ refreshToken: refreshTokenNew })
+        .updateEntity(false)
+        .execute();
+
+      if (updateAuth.affected !== 1) {
+        throw new Error('Cannot update user auth.');
+      }
+
+      // 사용자 없는 family 정리는 scheduler module에서 batch job + onDelete Cascade
 
       //   await queryRunner.rollbackTransaction(); // for test
       await queryRunner.commitTransaction();
@@ -158,7 +174,11 @@ export class FamilyService {
         familyId: familyToBeMerged,
       });
 
-      return { result: true };
+      return {
+        result: true,
+        accessToken: accessTokenNew,
+        refreshToken: refreshTokenNew,
+      };
     } catch (e) {
       await queryRunner.rollbackTransaction();
       return { result: false, error: e.message };

@@ -3,9 +3,9 @@ import { FamilyService } from './family.service';
 import { Family } from './entities/family.entity';
 import { AuthUser } from 'src/auth/decorators/auth-user.decorator';
 import { AuthUserId } from 'src/auth/constants/auth-user-id.type';
-import { BaseResponseDTO } from 'src/common/dto/base-res.dto';
 import { InviteFamilyResDTO } from './dto/invite-family-res.dto';
 import { FamilyResDTO } from './dto/family-res.dto';
+import { JoinFamilyResDTO } from './dto/join-family-res.dto';
 
 @Resolver(() => Family)
 export class FamilyResolver {
@@ -20,11 +20,11 @@ export class FamilyResolver {
     return this.familyService.findMyFamily(user, exceptMe);
   }
 
-  @Mutation(() => BaseResponseDTO)
+  @Mutation(() => JoinFamilyResDTO)
   joinFamily(
     @AuthUser() user: AuthUserId,
     @Args('familyToken') familyToken: string,
-  ): Promise<BaseResponseDTO> {
+  ): Promise<JoinFamilyResDTO> {
     return this.familyService.joinFamily(user, familyToken);
   }
 

@@ -6,10 +6,11 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Family } from './entities/family.entity';
 import { MessageFamily } from 'src/message/entities/message-family.entity';
 import { User } from 'src/user/entities/user.entity';
+import { UserAuth } from 'src/user/entities/user-auth.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Family, MessageFamily, User]),
+    TypeOrmModule.forFeature([Family, MessageFamily, User, UserAuth]),
     AuthModule,
   ],
   providers: [FamilyResolver, FamilyService],

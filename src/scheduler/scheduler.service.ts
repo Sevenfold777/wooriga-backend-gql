@@ -402,4 +402,46 @@ export class SchedulerService {
       await queryRunner.release();
     }
   }
+
+  @Cron('0 0 4 * * *', { timeZone: process.env.TZ })
+  async removeEmptyFamily(): Promise<void> {
+    try {
+      const membersCountAlias = 'membersCount';
+
+      const familyWithNoMembers = await this.familyRepository
+        .createQueryBuilder('family')
+        .select()
+        .addSelect('COUNT(user.id)', membersCountAlias)
+        .leftJoin('family.users', 'user')
+        .groupBy('family.id')
+        .having(`${membersCountAlias} = 0`)
+        .getMany();
+
+      console.log(familyWithNoMembers);
+
+      if (familyWithNoMembers.length === 0) {
+        return;
+      }
+
+      const deleteResult = await this.familyRepository
+        .createQueryBuilder('family')
+        .delete()
+        .where('family.id IN (:...tgtFamilies)', {
+          tgtFamilies: familyWithNoMembers.map((fam) => fam.id),
+        })
+        .execute();
+
+      if (deleteResult.affected < 1) {
+        throw new Error(
+          "Couldn't remove families with no members even those exist.",
+        );
+      }
+
+      this.logger.log(
+        `Removed ${familyWithNoMembers.length} families with no members.`,
+      );
+    } catch (e) {
+      this.logger.error(e);
+    }
+  }
 }
