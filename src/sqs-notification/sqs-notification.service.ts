@@ -50,35 +50,21 @@ export class SqsNotificationService implements OnApplicationBootstrap {
     }
   }
 
-  // TODO: polling on scheduler module
   /**
    * FIFO SQS
    * !!!항상 JSON data를 Message Body로 받아야!!!
+   * 그렇지 않으면 대기열에서 메세지 삭제, 에러 출력
    */
   async receiveNotificationPayload() {
     let messagesReceived: Message[];
 
-    const now = new Date();
-    const hour = now.getHours();
-    const minute = now.getMinutes();
-
-    let longPollingInterval = 20; // maximum
-
-    /* 
-      오늘의 이야기가 전송된 시점에는 저장해야할 알림(e.g. 댓글) 집중 
-      따라서 polling interval을 낮춰 fifo sqs 대기열 maximum 개수를 초과하지 않고
-      적당한 단위로 끊어서 db에 알림 batch insert 할 수 있도록 함
-      AWARE: ec2 env timezone Asia/Seoul인지
-    */
-    if (JSON.parse(process.env.SQS_DYNAMIC_LONG_POLLING_INTERVAL)) {
-      if ((hour === 11 && minute > 55) || (hour === 12 && minute < 20)) {
-        longPollingInterval = 3;
-      }
-    }
+    const longPollingInterval = 20; // maximum
+    const maxNumOfMessageToReceive =
+      JSON.parse(process.env.AWS_SQS_MAX_RECEIVE_MESSAGES) || 10;
 
     try {
       const command = new ReceiveMessageCommand({
-        MaxNumberOfMessages: 10,
+        MaxNumberOfMessages: maxNumOfMessageToReceive,
         MessageAttributeNames: ['All'],
         QueueUrl: process.env.AWS_SQS_NOTIFICATION_STORE_URL,
         WaitTimeSeconds: longPollingInterval, // 20초 단위 long polling
