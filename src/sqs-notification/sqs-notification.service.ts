@@ -59,8 +59,7 @@ export class SqsNotificationService implements OnApplicationBootstrap {
     let messagesReceived: Message[];
 
     const longPollingInterval = 20; // maximum
-    const maxNumOfMessageToReceive =
-      JSON.parse(process.env.AWS_SQS_MAX_RECEIVE_MESSAGES) || 10;
+    const maxNumOfMessageToReceive = 10; // maximum
 
     try {
       const command = new ReceiveMessageCommand({
