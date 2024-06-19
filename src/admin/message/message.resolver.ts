@@ -6,18 +6,24 @@ import { CountResDTO } from '../dto/count-res.dto';
 import { CreateMessageReqDTO } from '../dto/create-message-req.dto';
 import { EditMessageReqDTO } from '../dto/edit-message-req.dto';
 import { Message } from 'src/message/entities/message.entity';
+import { MessageListResDTO } from '../dto/message-list-res.dto';
+import { MessageDetailResDTO } from '../dto/message-detail-res.dto';
 
 @Resolver(() => Message)
 export class MessageResolver {
   constructor(private readonly messageService: MessageService) {}
 
-  @Query(() => BaseResponseDTO)
-  getMsgList(@Args() paginationReqDTO: PaginationReqDTO) {
+  @Query(() => MessageListResDTO)
+  getMsgList(
+    @Args() paginationReqDTO: PaginationReqDTO,
+  ): Promise<MessageListResDTO> {
     return this.messageService.getMsgList(paginationReqDTO);
   }
 
-  @Query(() => BaseResponseDTO)
-  getMsgDetail(@Args('id', { type: () => Int }) id: number) {
+  @Query(() => MessageDetailResDTO)
+  getMsgDetail(
+    @Args('id', { type: () => Int }) id: number,
+  ): Promise<MessageDetailResDTO> {
     return this.messageService.getMsgDetail(id);
   }
 

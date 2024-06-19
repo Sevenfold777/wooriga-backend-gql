@@ -51,7 +51,6 @@ export class FamilyService {
   async getUsers(family: Family): Promise<User[]> {
     try {
       const users = await this.batchUserLoader.load(family.id);
-      console.log(users);
 
       return users;
     } catch (e) {
@@ -68,7 +67,7 @@ export class FamilyService {
         .createQueryBuilder('user')
         .select()
         .where('user.familyId IN (:...familyIds)', { familyIds })
-        // .andWhere('user.status = :status', { status: UserStatus.ACTIVE })
+        .andWhere('user.status = :status', { status: UserStatus.ACTIVE })
         .orderBy('user.id', 'ASC')
         .getMany();
 

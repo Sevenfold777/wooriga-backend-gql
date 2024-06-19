@@ -14,6 +14,10 @@ import { CreateMessageReqDTO } from '../dto/create-message-req.dto';
 import { EditMessageReqDTO } from '../dto/edit-message-req.dto';
 import { Family } from 'src/family/entities/family.entity';
 import { SqsNotificationService } from 'src/sqs-notification/sqs-notification.service';
+import { MessageListResDTO } from '../dto/message-list-res.dto';
+import { MessageWithSent } from '../dto/message-with-sent.dto';
+import { MessageWithStat } from '../dto/message-with-stat.dto';
+import { MessageDetailResDTO } from '../dto/message-detail-res.dto';
 
 @Injectable()
 export class MessageService {
@@ -32,31 +36,96 @@ export class MessageService {
     private readonly familyRepository: Repository<Family>,
   ) {}
 
-  async getMsgList({ take, prev }: PaginationReqDTO) {
+  async getMsgList({
+    take,
+    prev,
+  }: PaginationReqDTO): Promise<MessageListResDTO> {
     try {
-      const messages = await this.messageRepository
-        .createQueryBuilder('msg')
-        .select()
-        .orderBy('msg.id', 'DESC')
-        .offset(take * prev)
-        .limit(take)
-        .getMany();
+      const sentCountAlias = 'sentCount';
 
-      return { result: true };
+      const { raw: messagesRaw, entities: messageEntities } =
+        await this.messageRepository
+          .createQueryBuilder('msg')
+          .select()
+          .addSelect('COUNT(msgFam.id)', sentCountAlias)
+          .leftJoin('message_family', 'msgFam', 'msgFam.messageId = msg.id')
+          .groupBy('msg.id')
+          .orderBy('msg.id', 'DESC')
+          .offset(take * prev)
+          .limit(take)
+          .getRawAndEntities();
+
+      const messageWithSentList: MessageWithSent[] = [];
+
+      for (let i = 0; i < messageEntities.length; i++) {
+        const messageWithSent = new MessageWithSent();
+
+        Object.assign(messageWithSent, messageEntities[i]);
+        messageWithSent.sentCount = messagesRaw[i][sentCountAlias];
+
+        messageWithSentList.push(messageWithSent);
+      }
+
+      return { result: true, messageWithSents: messageWithSentList };
     } catch (e) {
       return { result: false, error: e.message };
     }
   }
 
-  async getMsgDetail(id: number) {
+  async getMsgDetail(id: number): Promise<MessageDetailResDTO> {
     try {
-      const message = await this.messageRepository
-        .createQueryBuilder('msg')
-        .select()
-        .where('msg.id = :id', { id })
-        .getOneOrFail();
+      console.time();
+      // 1. message info (TODO: message list와 중복, front와 합의 후 생략)
+      const sentCountAlias = 'sentCount';
 
-      return { result: true };
+      const { raw: messagesRaw, entities: messageEntities } =
+        await this.messageRepository
+          .createQueryBuilder('msg')
+          .select()
+          .addSelect('COUNT(msgFam.id)', sentCountAlias)
+          .leftJoin('message_family', 'msgFam', 'msgFam.messageId = msg.id')
+          .where('msg.id = :id', { id })
+          .groupBy('msg.id')
+          .orderBy('msg.id', 'DESC')
+          .limit(1)
+          .getRawAndEntities();
+
+      // 2. comments, commented users
+      const comments = await this.messageCommentRepository
+        .createQueryBuilder('comment')
+        .select('comment.id')
+        .addSelect('comment.authorId')
+        .innerJoin('comment.message', 'msgFam', 'msgFam.messageId = :id', {
+          id,
+        })
+        .getMany();
+
+      const commentsCount = comments.length;
+
+      const authors = new Set(comments.map((comment) => comment.authorId));
+      const authorsCount = authors.size;
+
+      // 3. keeps count
+      const keepsCount = await this.messageKeepRepository
+        .createQueryBuilder('keep')
+        .innerJoin('keep.message', 'msgFam', 'msgFam.messageId = :id', {
+          id,
+        })
+        .getCount();
+
+      // assign return dto
+      const messageWithStat = new MessageWithStat();
+
+      Object.assign(messageWithStat, messageEntities[0]);
+      messageWithStat.sentCount = messagesRaw[0][sentCountAlias];
+
+      messageWithStat.commentsCount = commentsCount;
+      messageWithStat.commentAuthorsCount = authorsCount;
+      messageWithStat.keepsCount = keepsCount;
+
+      console.timeEnd();
+
+      return { result: true, messageWithStat };
     } catch (e) {
       return { result: false, error: e.message };
     }

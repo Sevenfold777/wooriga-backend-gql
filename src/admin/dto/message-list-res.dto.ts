@@ -1,8 +1,9 @@
 import { Field, ObjectType } from '@nestjs/graphql';
 import { BaseResponseDTO } from 'src/common/dto/base-res.dto';
-import { Message } from 'src/message/entities/message.entity';
+import { MessageWithSent } from './message-with-sent.dto';
 
 @ObjectType()
 export class MessageListResDTO extends BaseResponseDTO {
-  // @Field(() => [Message],)
+  @Field(() => [MessageWithSent], { nullable: true })
+  messageWithSents?: MessageWithSent[];
 }

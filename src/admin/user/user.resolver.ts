@@ -6,6 +6,7 @@ import { PaginationReqDTO } from 'src/common/dto/pagination-req.dto';
 import { CountResDTO } from '../dto/count-res.dto';
 import { DauListResDTO } from '../dto/dau-list-res.dto';
 import { MauListResDTO } from '../dto/mau-list-res.dto';
+import { UserDetailsResDTO } from '../dto/user-details-res.dto';
 
 @Resolver(() => User)
 export class UserResolver {
@@ -26,8 +27,10 @@ export class UserResolver {
     return this.userService.getMau();
   }
 
-  @Query(() => BaseResponseDTO)
-  getUsersDetails(@Args() paginationReqDTO: PaginationReqDTO) {
+  @Query(() => UserDetailsResDTO)
+  getUsersDetails(
+    @Args() paginationReqDTO: PaginationReqDTO,
+  ): Promise<UserDetailsResDTO> {
     return this.userService.getUsersDetails(paginationReqDTO);
   }
 
