@@ -25,6 +25,10 @@ import {
   USER_UPDATE_EVENT,
   USER_WITHDRAW_EVENT,
 } from 'src/common/constants/events';
+import { CommentStatus } from 'src/common/constants/comment-status.enum';
+import { Photo } from 'src/photo/entities/photo.entity';
+import { PhotoComment } from 'src/photo/entities/photo-comment.entity';
+import { MessageComment } from 'src/message/entities/message-comment.entity';
 
 @Injectable()
 export class UserService {
@@ -36,6 +40,11 @@ export class UserService {
     @InjectRepository(User) private userRepository: Repository<User>,
     @InjectRepository(UserAuth)
     private userAuthRepository: Repository<UserAuth>,
+    @InjectRepository(Photo) private photoRepository: Repository<Photo>,
+    @InjectRepository(PhotoComment)
+    private photoCommentRepository: Repository<PhotoComment>,
+    @InjectRepository(MessageComment)
+    private messageCommentRepository: Repository<MessageComment>,
     private eventEmitter: EventEmitter2,
   ) {}
 
@@ -351,7 +360,7 @@ export class UserService {
   /**
    * v2. 서비스 정책 변경
    * 사용자 60일 뒤 계정 hard delete 시
-   * DB 단에서 onDelete Cascade 진행
+   * DB 단에서 onDelete Cascade 진행, 이후 재가입 가능
    */
   async withdraw({ familyId, userId }: AuthUserId): Promise<BaseResponseDTO> {
     const queryRunner = this.dataSource.createQueryRunner();
@@ -360,20 +369,143 @@ export class UserService {
     queryRunner.startTransaction();
 
     try {
-      // TODO: delete photo from s3 also (use method from uploadService)
-      // TODO: handle dangling family (event scheduler GC처럼 동작하도록 구현)
+      // TODO: delete photo from s3
+      // TODO: delete pedia profile photos from s3
 
-      const userResult = await this.userRepository
+      /*
+        1안. 현재 방식, 삭제해야 할 것
+        1. daily-emotion [V]
+
+        2. family-pedia [V]
+        3. family-pedia-question (2. => onDelete Cascade) 
+        4. family-pedia-profile-photo (2. => onDelete Cascade) 
+        4-1. s3 - [V]
+
+        5. message-comment [V]
+        6. message-keep [V]
+
+        7. notification [V]
+
+        8. photo-comment [V]
+        9. photo-file (s3) (11. => onDelete Cascade)
+        9-1. s3 - [V]
+        10. photo-like [V]
+        11. photo [V]
+
+        12. user [V]
+        13. user-auth (12. onDelete Cascade)
+      */
+
+      /*
+          2안. 탈퇴 사용자 테이블 운용 방식 (여기서 User 실제 삭제)
+          1. daily-emotion (User => onDelete Cascade)
+
+          2. family-pedia (User => onDelete Cascade)
+          3. family-pedia-question (2. => onDelete Cascade) 
+          4. family-pedia-profile-photo (2. => onDelete Cascade) 
+          4-1. s3 - [V]
+
+          5. message-comment (User => onDelete Cascade)
+          6. message-keep (User => onDelete Cascade)
+
+          7. notification (User => onDelete Cascade)
+
+          8. photo-comment (User => onDelete Cascade)
+          9. photo-file (s3) (11. => onDelete Cascade)
+          9-1. s3 - [V]
+          10. photo-like (User => onDelete Cascade)
+          11. photo (User => onDelete Cascade) // 가족 소유 Vs. 작성자 소유 고민
+
+          12. user [V]
+          13. user-auth (User => onDelete Cascade)
+      */
+
+      /*
+          3안. 가족에게 보이지 않도록 우선 소규모 작업(familyId) + 새벽 시간에 batch job
+
+          1. daily-emotion [V]
+
+          2. family-pedia [V]
+          3. family-pedia-question [V]
+          4. family-pedia-profile-photo [V]
+          4-1. s3 - [V]
+
+          5. message-comment [X]
+          6. message-keep [V] 상관 없음 자기 거밖에 안 보임
+
+          7. notification [V] 상관 없음 자기 거밖에 안 보임
+
+          8. photo-comment [X]
+          9. photo-file [V]
+          9-1. s3 - [V]
+          10. photo-like [V] 상관 없음 자기 거밖에 안 보임
+          11. photo [X] // 가족 소유 Vs. 작성자 소유 고민 => 작성자 소유로 해야할 듯, 작성자가 삭제할 수 있는 권한
+
+          12. user [V] 상관 없음 자기 거밖에 안 보임
+          13. user-auth [V] 상관 없음 자기 거밖에 안 보임
+
+          => 해야할 일
+          1. user.familyId = null [V]
+          2. photo-comment.authorId === userId => status.DELETED [V]
+          3. message-comment.authorId === userId => status.DELETED [V]
+          4. photo.authorId === userId => photo.familyId = null [V]
+          5. 기타 등등 batch job 새벽에, 오늘 status.Deleted로 update 된 사용자에 대하여 실제 삭제, S3 삭제 등 수행
+            - photo: photo, comment, like, file, s3
+            - message: comment, keep
+            - familyPedia: pedia, pedia question, profile photo, s3
+            - daily emotion
+       */
+
+      const userUpdatePromise = this.userRepository
         .createQueryBuilder('user')
         .update()
         .where('id = :userId', { userId })
-        .set({ status: UserStatus.DELETED })
+        .set({ status: UserStatus.DELETED, familyId: null, fcmToken: null })
         .updateEntity(false)
         .execute();
 
-      if (userResult.affected !== 1) {
-        throw new Error('Cannot update user status to DELETED.');
-      }
+      const userAuthPromise = this.userAuthRepository
+        .createQueryBuilder('auth')
+        .update()
+        .where('userId = :userId', { userId })
+        .set({ refreshToken: null })
+        .updateEntity(false)
+        .execute();
+
+      // photo to deleted
+      const photoUpdatePromise = this.photoRepository
+        .createQueryBuilder('photo')
+        .update()
+        .set({ familyId: null })
+        .where('authorId = :userId', { userId })
+        .updateEntity(false)
+        .execute();
+
+      // photo comment to deleted
+      const photoCommentPromise = this.photoCommentRepository
+        .createQueryBuilder('comment')
+        .update()
+        .set({ status: CommentStatus.DELETED })
+        .where('authorId = :userId', { userId })
+        .updateEntity(false)
+        .execute();
+
+      // message comment to deleted
+      const messageCommentPromise = this.messageCommentRepository
+        .createQueryBuilder('comment')
+        .update()
+        .set({ status: CommentStatus.DELETED })
+        .where('authorId = :userId', { userId })
+        .updateEntity(false)
+        .execute();
+
+      await Promise.all([
+        userUpdatePromise,
+        userAuthPromise,
+        photoUpdatePromise,
+        photoCommentPromise,
+        messageCommentPromise,
+      ]);
 
       this.eventEmitter.emit(USER_WITHDRAW_EVENT, { familyId, userId });
 

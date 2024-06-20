@@ -1,5 +1,7 @@
 import {
   DeleteObjectCommand,
+  DeleteObjectsCommand,
+  ObjectIdentifier,
   PutObjectCommand,
   S3Client,
 } from '@aws-sdk/client-s3';
@@ -62,10 +64,10 @@ export class S3Service {
   }
 
   async deleteFile(key: string): Promise<BaseResponseDTO> {
-    // 엔드포인트만 넘겨 받는 게 규약이지만, 앱단에서 실수할 가능성 높기에 이중 필터
-    const strippedKey = key.replace(/^\.com\//, '').split('?')[0];
-
     try {
+      // 엔드포인트만 넘겨 받는 게 규약이지만, 앱단에서 실수할 가능성 높기에 이중 필터
+      const strippedKey = key.replace(/^\.com\//, '').split('?')[0];
+
       const command = new DeleteObjectCommand({
         Bucket: process.env.AWS_S3_BUCKET,
         Key: strippedKey,
@@ -74,6 +76,26 @@ export class S3Service {
       await this.s3Client.send(command);
 
       return { result: true };
+    } catch (e) {
+      return { result: false, error: e.message };
+    }
+  }
+
+  async deleteFiles(keys: string[]): Promise<BaseResponseDTO> {
+    try {
+      // 엔드포인트만 넘겨 받는 게 규약이지만, 앱단에서 실수할 가능성 높기에 이중 필터
+      const strippedKeys: ObjectIdentifier[] = keys.map((key) => ({
+        Key: key.replace(/^\.com\//, '').split('?')[0],
+      }));
+
+      const command = new DeleteObjectsCommand({
+        Bucket: process.env.AWS_S3_BUCKET,
+        Delete: {
+          Objects: strippedKeys,
+        },
+      });
+
+      const { Deleted } = await this.s3Client.send(command);
     } catch (e) {
       return { result: false, error: e.message };
     }

@@ -7,7 +7,7 @@ import { Field, ObjectType } from '@nestjs/graphql';
 @ObjectType()
 export class MessageComment extends CommentEntity {
   @ManyToOne(() => MessageFamily, (message) => message.comments, {
-    onDelete: 'CASCADE',
+    createForeignKeyConstraints: false,
   })
   @Field(() => MessageFamily)
   message: MessageFamily;

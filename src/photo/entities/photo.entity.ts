@@ -28,11 +28,11 @@ export class Photo extends CoreEntity {
   @Field(() => User)
   author: User;
 
-  @Column()
+  @Column({ nullable: true })
   @Field(() => Int)
   familyId: number;
 
-  @ManyToOne(() => Family, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Family, { onDelete: 'CASCADE', nullable: true })
   @Field(() => Family)
   family: Family;
 

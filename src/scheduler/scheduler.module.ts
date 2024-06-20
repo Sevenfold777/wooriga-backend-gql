@@ -10,10 +10,12 @@ import { SqsNotificationModule } from 'src/sqs-notification/sqs-notification.mod
 import { Family } from 'src/family/entities/family.entity';
 import { DAU } from 'src/admin/entities/dau.entity';
 import { MAU } from 'src/admin/entities/mau.entity';
+import { S3Module } from 'src/s3/s3.module';
 
 @Module({
   imports: [
     SqsNotificationModule,
+    S3Module,
     TypeOrmModule.forFeature([
       User,
       UserAuth,

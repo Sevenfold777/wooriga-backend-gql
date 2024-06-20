@@ -60,7 +60,7 @@ export class User extends CoreEntity {
   @Field(() => Int)
   familyId: number;
 
-  @ManyToOne(() => Family, (family) => family.users)
+  @ManyToOne(() => Family, (family) => family.users, { nullable: true })
   @JoinColumn({ name: 'familyId', referencedColumnName: 'id' })
   @Field(() => Family)
   family: Family;

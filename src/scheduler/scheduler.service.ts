@@ -5,15 +5,24 @@ import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DAU } from 'src/admin/entities/dau.entity';
 import { MAU } from 'src/admin/entities/mau.entity';
 import { convertSolarToLunarDate } from 'src/common/utils/convertSolarToLunarDate.function';
+import { DailyEmotion } from 'src/daily-emotion/entities/daily-emotion.entity';
+import { FamilyPediaProfilePhoto } from 'src/family-pedia/entities/family-pedia-profile-photo.entity';
+import { FamilyPedia } from 'src/family-pedia/entities/family-pedia.entity';
 import { Family } from 'src/family/entities/family.entity';
 import { Letter } from 'src/letter/entities/letter.entity';
+import { MessageComment } from 'src/message/entities/message-comment.entity';
 import { MessageFamily } from 'src/message/entities/message-family.entity';
 import { Message } from 'src/message/entities/message.entity';
+import { PhotoComment } from 'src/photo/entities/photo-comment.entity';
+import { PhotoFile } from 'src/photo/entities/photo-file.entity';
+import { Photo } from 'src/photo/entities/photo.entity';
+import { S3Service } from 'src/s3/s3.service';
 import { NotificationType } from 'src/sqs-notification/constants/notification-type';
 import { SqsNotificationProduceDTO } from 'src/sqs-notification/dto/sqs-notification-produce.dto';
+import { UserStatus } from 'src/user/constants/user-status.enum';
 import { UserAuth } from 'src/user/entities/user-auth.entity';
 import { User } from 'src/user/entities/user.entity';
-import { Brackets, DataSource, Repository } from 'typeorm';
+import { Brackets, DataSource, Repository, SelectQueryBuilder } from 'typeorm';
 import { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
 
 @Injectable()
@@ -22,6 +31,7 @@ export class SchedulerService {
 
   constructor(
     private readonly sqsNotificationService: SqsNotificationService,
+    private readonly s3Service: S3Service,
     @InjectDataSource() private dataSource: DataSource,
     @InjectRepository(User) private userRepository: Repository<User>,
     @InjectRepository(UserAuth)
@@ -187,7 +197,7 @@ export class SchedulerService {
             receivedAt: new Date(),
           }));
 
-        const insertResult = await this.messageFamRepository
+        await this.messageFamRepository
           .createQueryBuilder('msgFam')
           .insert()
           .into(MessageFamily)
@@ -403,8 +413,10 @@ export class SchedulerService {
     }
   }
 
-  @Cron('0 0 4 * * *', { timeZone: process.env.TZ })
+  @Cron('0 0 2 * * *', { timeZone: process.env.TZ })
   async removeEmptyFamily(): Promise<void> {
+    this.logger.log('scheduler invoked: [ removeEmptyFamily ]');
+
     try {
       const membersCountAlias = 'membersCount';
 
@@ -416,8 +428,6 @@ export class SchedulerService {
         .groupBy('family.id')
         .having(`${membersCountAlias} = 0`)
         .getMany();
-
-      console.log(familyWithNoMembers);
 
       if (familyWithNoMembers.length === 0) {
         return;
@@ -443,5 +453,545 @@ export class SchedulerService {
     } catch (e) {
       this.logger.error(e);
     }
+  }
+
+  /*
+    탈퇴 유저 배치 처리
+    - 엔티티 개수가 많은 comment, s3 삭제를 동반하는 image(file) related entity 삭제는 cascade 하지 않고 별도로 진행
+    - 이외는 부모 테이블 삭제시 onDelete Cascade 활용
+    - 한 번에 너무 많은 update, delete 적용되지 않도록 적절히 배치 단위 조정
+
+    새벽 스케쥴링 시간
+    - remove empty family (db 작업 없음)
+    - daily emotion: 2:15AM
+    - pedia profile photo: 2:30AM
+    - pedia: 2:45AM
+    - photo file: 3:00AM
+    - photo: 3:15AM
+    - photo comment: 3:30AM
+    - message comment: 3:45AM
+    - user: 4:00AM
+  */
+
+  /**
+   * pedia, photo, photo comment, message comment, daily emotion 제외 onDelete cascade
+   * - 해당: photo like, message keep
+   */
+  @Cron('0 0 4 * * *', { timeZone: process.env.TZ })
+  private async deleteUser(): Promise<void> {
+    this.logger.log('scheduler invoked: [ deleteUser ]');
+
+    const queryRunner = this.dataSource.createQueryRunner();
+
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    const BATCH_SIZE = 20; // onDelete cacade로 인해 batch size 작게 설정
+
+    try {
+      const before60days = new Date(Date.now() - 1000 * 60 * 60 * 24 * 60);
+
+      const userQueryBuilder = queryRunner.manager.createQueryBuilder(
+        User,
+        'user',
+      );
+      const usersWithdrawn = await this.getUsersWithdrawn(
+        userQueryBuilder,
+        before60days,
+        true,
+      );
+
+      for (let i = 0; i < Math.ceil(usersWithdrawn.length / BATCH_SIZE); i++) {
+        const currentTgts = usersWithdrawn.slice(
+          BATCH_SIZE * i,
+          BATCH_SIZE * (i + 1),
+        );
+
+        const deleteResult = await queryRunner.manager
+          .createQueryBuilder(User, 'user')
+          .delete()
+          .where('user.id IN (:...tgtIds)', {
+            tgtIds: currentTgts.map((tgt) => tgt.id),
+          })
+          .execute();
+
+        if (deleteResult.affected !== currentTgts.length) {
+          throw new Error('Some users are not removed from db.');
+        }
+      }
+
+      await queryRunner.commitTransaction();
+    } catch (e) {
+      this.logger.error(e);
+      await queryRunner.rollbackTransaction();
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
+  // 댓글 신고 검토를 위해 바로 삭제하지 않음 (사용자가 완전히 삭제되는 60일째에 같이 진행)
+  @Cron('0 30 3 * * *', { timeZone: process.env.TZ })
+  private async deletePhotoComment(): Promise<void> {
+    this.logger.log('scheduler invoked: [ deletePhotoComment ]');
+
+    const queryRunner = this.dataSource.createQueryRunner();
+
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    const BATCH_SIZE = 100;
+
+    try {
+      const before60days = new Date(Date.now() - 1000 * 60 * 60 * 24 * 60);
+
+      const userQueryBuilder = queryRunner.manager.createQueryBuilder(
+        User,
+        'user',
+      );
+      const usersWithdrawn = await this.getUsersWithdrawn(
+        userQueryBuilder,
+        before60days,
+        true,
+      );
+
+      const comments = await queryRunner.manager
+        .createQueryBuilder(PhotoComment, 'comment')
+        .select('comment.id')
+        .where('comment.authorId IN (:...targetUserIds)', {
+          targetUserIds: usersWithdrawn.map((user) => user.id),
+        })
+        .getMany();
+
+      for (let i = 0; i < Math.ceil(comments.length / BATCH_SIZE); i++) {
+        const currentTgts = comments.slice(
+          BATCH_SIZE * i,
+          BATCH_SIZE * (i + 1),
+        );
+
+        const deleteResult = await queryRunner.manager
+          .createQueryBuilder(PhotoComment, 'comment')
+          .delete()
+          .where('comment.id IN (:...tgtIds)', {
+            tgtIds: currentTgts.map((tgt) => tgt.id),
+          })
+          .execute();
+
+        if (deleteResult.affected !== currentTgts.length) {
+          throw new Error('Some photo comments are not removed from db.');
+        }
+      }
+
+      await queryRunner.commitTransaction();
+    } catch (e) {
+      this.logger.error(e);
+      await queryRunner.rollbackTransaction();
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
+  // 댓글 신고 검토를 위해 바로 삭제하지 않음 (사용자가 완전히 삭제되는 60일째에 같이 진행)
+  @Cron('0 45 3 * * *', { timeZone: process.env.TZ })
+  private async deleteMessageComment(): Promise<void> {
+    this.logger.log('scheduler invoked: [ deleteMessageComment ]');
+
+    const queryRunner = this.dataSource.createQueryRunner();
+
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    const BATCH_SIZE = 100;
+
+    try {
+      const before60days = new Date(Date.now() - 1000 * 60 * 60 * 24 * 60);
+
+      const userQueryBuilder = queryRunner.manager.createQueryBuilder(
+        User,
+        'user',
+      );
+      const usersWithdrawn = await this.getUsersWithdrawn(
+        userQueryBuilder,
+        before60days,
+        true,
+      );
+
+      const comments = await queryRunner.manager
+        .createQueryBuilder(MessageComment, 'comment')
+        .select('comment.id')
+        .where('comment.authorId IN (:...targetUserIds)', {
+          targetUserIds: usersWithdrawn.map((user) => user.id),
+        })
+        .getMany();
+
+      for (let i = 0; i < Math.ceil(comments.length / BATCH_SIZE); i++) {
+        const currentTgts = comments.slice(
+          BATCH_SIZE * i,
+          BATCH_SIZE * (i + 1),
+        );
+
+        const deleteResult = await queryRunner.manager
+          .createQueryBuilder(MessageComment, 'comment')
+          .delete()
+          .where('comment.id IN (:...tgtIds)', {
+            tgtIds: currentTgts.map((tgt) => tgt.id),
+          })
+          .execute();
+
+        if (deleteResult.affected !== currentTgts.length) {
+          throw new Error('Some message comments are not removed from db.');
+        }
+      }
+
+      await queryRunner.commitTransaction();
+    } catch (e) {
+      this.logger.error(e);
+      await queryRunner.rollbackTransaction();
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
+  @Cron('0 15 2 * * *', { timeZone: process.env.TZ })
+  private async deleteEmotion(): Promise<void> {
+    this.logger.log('scheduler invoked: [ deleteEmotion ]');
+
+    const queryRunner = this.dataSource.createQueryRunner();
+
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    const BATCH_SIZE = 100;
+
+    try {
+      const yesterday = new Date(Date.now() - 1000 * 60 * 60 * 24);
+
+      const userQueryBuilder = queryRunner.manager.createQueryBuilder(
+        User,
+        'user',
+      );
+      const usersWithdrawn = await this.getUsersWithdrawn(
+        userQueryBuilder,
+        yesterday,
+      );
+
+      const comments = await queryRunner.manager
+        .createQueryBuilder(DailyEmotion, 'emotion')
+        .select('emotion.userId')
+        .addSelect('emotion.date')
+        .where('emotion.userId IN (:...targetUserIds)', {
+          targetUserIds: usersWithdrawn.map((user) => user.id),
+        })
+        .getMany();
+
+      for (let i = 0; i < Math.ceil(comments.length / BATCH_SIZE); i++) {
+        const currentTgts = comments.slice(
+          BATCH_SIZE * i,
+          BATCH_SIZE * (i + 1),
+        );
+
+        // for composite key
+        const tgtIds = currentTgts
+          .map((tgt) => `(${tgt.userId}, "${tgt.date.toISOString()}")`)
+          .join(',');
+
+        const deleteResult = await queryRunner.manager
+          .createQueryBuilder(DailyEmotion, 'emotion')
+          .delete()
+          .where(`(emotion.userId, emotion.date) IN (${tgtIds})`)
+          .execute();
+
+        if (deleteResult.affected !== currentTgts.length) {
+          throw new Error('Some message comments are not removed from db.');
+        }
+      }
+
+      await queryRunner.commitTransaction();
+    } catch (e) {
+      this.logger.error(e);
+      await queryRunner.rollbackTransaction();
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
+  @Cron('0 30 2 * * *', { timeZone: process.env.TZ })
+  private async deletePediaProfilePhoto(): Promise<void> {
+    this.logger.log('scheduler invoked: [ deletePediaProfilePhoto ]');
+
+    const queryRunner = this.dataSource.createQueryRunner();
+
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    const BATCH_SIZE = 100;
+
+    try {
+      const yesterday = new Date(Date.now() - 1000 * 60 * 60 * 24);
+
+      const userQueryBuilder = queryRunner.manager.createQueryBuilder(
+        User,
+        'user',
+      );
+      const usersWithdrawn = await this.getUsersWithdrawn(
+        userQueryBuilder,
+        yesterday,
+      );
+
+      const pediaPhotoFiles = await queryRunner.manager
+        .createQueryBuilder(FamilyPediaProfilePhoto, 'photo')
+        .select('photo.id')
+        .addSelect('photo.url')
+        .innerJoin(
+          'photo.familyPedia',
+          'pedia',
+          'pedia.ownerId IN (:...targetUserIds)',
+          { targetUserIds: usersWithdrawn.map((user) => user.id) },
+        )
+        .getMany();
+
+      // iterate each batch
+      for (let i = 0; i < Math.ceil(pediaPhotoFiles.length / BATCH_SIZE); i++) {
+        const currentTgts = pediaPhotoFiles.slice(
+          BATCH_SIZE * i,
+          BATCH_SIZE * (i + 1),
+        );
+
+        const s3Result = await this.s3Service.deleteFiles(
+          currentTgts.map((tgt) => tgt.url),
+        );
+
+        if (!s3Result.result) {
+          throw new Error(s3Result.error);
+        }
+
+        const deleteResult = await queryRunner.manager
+          .createQueryBuilder(FamilyPediaProfilePhoto, 'photo')
+          .delete()
+          .where('photo.id IN (:...tgtIds)', {
+            tgtIds: currentTgts.map((tgt) => tgt.id),
+          })
+          .execute();
+
+        if (deleteResult.affected !== currentTgts.length) {
+          throw new Error(
+            'Some pedia-photos are not removed from db. (c.f. removed from S3)',
+          );
+        }
+      }
+
+      await queryRunner.commitTransaction();
+    } catch (e) {
+      this.logger.error(e);
+      await queryRunner.rollbackTransaction();
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
+  // onDelete Cascade로 question도 함께 삭제
+  @Cron('0 45 2 * * *', { timeZone: process.env.TZ })
+  private async deletePedia(): Promise<void> {
+    this.logger.log('scheduler invoked: [ deletePedia ]');
+
+    const queryRunner = this.dataSource.createQueryRunner();
+
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    const BATCH_SIZE = 30; // cascade option 때문에 조금 더 작게 잡음
+
+    try {
+      const yesterday = new Date(Date.now() - 1000 * 60 * 60 * 24);
+
+      const userQueryBuilder = queryRunner.manager.createQueryBuilder(
+        User,
+        'user',
+      );
+      const usersWithdrawn = await this.getUsersWithdrawn(
+        userQueryBuilder,
+        yesterday,
+      );
+
+      const pedias = await queryRunner.manager
+        .createQueryBuilder(FamilyPedia, 'pedia')
+        .select('pedia.ownerId')
+        .where('pedia.ownerId IN (:...targetUserIds)', {
+          targetUserIds: usersWithdrawn.map((user) => user.id),
+        })
+        .getMany();
+
+      // iterate each batch
+      for (let i = 0; i < Math.ceil(pedias.length / BATCH_SIZE); i++) {
+        const currentTgts = pedias.slice(BATCH_SIZE * i, BATCH_SIZE * (i + 1));
+
+        const deleteResult = await queryRunner.manager
+          .createQueryBuilder(FamilyPedia, 'pedia')
+          .delete()
+          .where('pedia.ownerId IN (:...tgtIds)', {
+            tgtIds: currentTgts.map((tgt) => tgt.ownerId),
+          })
+          .execute();
+
+        if (deleteResult.affected !== currentTgts.length) {
+          throw new Error('Some pedias are not removed from db.');
+        }
+      }
+
+      await queryRunner.commitTransaction();
+    } catch (e) {
+      this.logger.error(e);
+      await queryRunner.rollbackTransaction();
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
+  @Cron('0 0 3 * * *', { timeZone: process.env.TZ })
+  private async deletePhotoFile(): Promise<void> {
+    this.logger.log('scheduler invoked: [ deletePhotoFile ]');
+
+    const queryRunner = this.dataSource.createQueryRunner();
+
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    const BATCH_SIZE = 100;
+
+    try {
+      const yesterday = new Date(Date.now() - 1000 * 60 * 60 * 24);
+
+      const userQueryBuilder = queryRunner.manager.createQueryBuilder(
+        User,
+        'user',
+      );
+      const usersWithdrawn = await this.getUsersWithdrawn(
+        userQueryBuilder,
+        yesterday,
+      );
+
+      const photoFiles = await queryRunner.manager
+        .createQueryBuilder(PhotoFile, 'file')
+        .select('file.id')
+        .addSelect('file.url')
+        .innerJoin(
+          'file.photo',
+          'photo',
+          'photo.authorId IN (:...targetUserIds)',
+          { targetUserIds: usersWithdrawn.map((user) => user.id) },
+        )
+        .getMany();
+
+      // iterate each batch
+      for (let i = 0; i < Math.ceil(photoFiles.length / BATCH_SIZE); i++) {
+        const currentTgts = photoFiles.slice(
+          BATCH_SIZE * i,
+          BATCH_SIZE * (i + 1),
+        );
+
+        const s3Result = await this.s3Service.deleteFiles(
+          currentTgts.map((tgt) => tgt.url),
+        );
+
+        if (!s3Result.result) {
+          throw new Error(s3Result.error);
+        }
+
+        const deleteResult = await queryRunner.manager
+          .createQueryBuilder(PhotoFile, 'file')
+          .delete()
+          .where('file.id IN (:...tgtIds)', {
+            tgtIds: currentTgts.map((tgt) => tgt.id),
+          })
+          .execute();
+
+        if (deleteResult.affected !== currentTgts.length) {
+          throw new Error(
+            'Some files are not removed from db. (c.f. removed from S3)',
+          );
+        }
+      }
+
+      await queryRunner.commitTransaction();
+    } catch (e) {
+      this.logger.error(e);
+      await queryRunner.rollbackTransaction();
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
+  @Cron('0 15 3 * * *', { timeZone: process.env.TZ })
+  private async deletePhoto(): Promise<void> {
+    this.logger.log('scheduler invoked: [ deletePhoto ]');
+
+    const queryRunner = this.dataSource.createQueryRunner();
+
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    const BATCH_SIZE = 100;
+
+    try {
+      const yesterday = new Date(Date.now() - 1000 * 60 * 60 * 24);
+
+      const userQueryBuilder = queryRunner.manager.createQueryBuilder(
+        User,
+        'user',
+      );
+      const usersWithdrawn = await this.getUsersWithdrawn(
+        userQueryBuilder,
+        yesterday,
+      );
+
+      const photos = await queryRunner.manager
+        .createQueryBuilder(Photo, 'photo')
+        .select('photo.id')
+        .where('photo.authorId IN (:...targetUserIds)', {
+          targetUserIds: usersWithdrawn.map((user) => user.id),
+        })
+        .getMany();
+
+      // iterate each batch
+      for (let i = 0; i < Math.ceil(photos.length / BATCH_SIZE); i++) {
+        const currentTgts = photos.slice(BATCH_SIZE * i, BATCH_SIZE * (i + 1));
+
+        const deleteResult = await queryRunner.manager
+          .createQueryBuilder(Photo, 'photo')
+          .delete()
+          .where('photo.id IN (:...tgtIds)', {
+            tgtIds: currentTgts.map((tgt) => tgt.id),
+          })
+          .execute();
+
+        if (deleteResult.affected !== currentTgts.length) {
+          throw new Error('Some photos are not removed from db.');
+        }
+      }
+
+      await queryRunner.commitTransaction();
+    } catch (e) {
+      this.logger.error(e);
+      await queryRunner.rollbackTransaction();
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
+  private async getUsersWithdrawn(
+    userQueryBuilder: SelectQueryBuilder<User>,
+    targetDate: Date,
+    before = false,
+  ): Promise<User[]> {
+    const query = userQueryBuilder
+      .select('id')
+      .where('status = :status', { status: UserStatus.DELETED });
+
+    before
+      ? query.andWhere('updatedAt < :targetDate', { targetDate })
+      : query.andWhere('updatedAt > :targetDate', { targetDate });
+
+    const usersWithdrawn = await query.getMany();
+
+    return usersWithdrawn;
   }
 }

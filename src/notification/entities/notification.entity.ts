@@ -39,9 +39,7 @@ export class Notification {
   @Field({ nullable: true })
   param?: string;
 
-  @ManyToOne(() => User, {
-    createForeignKeyConstraints: false,
-  })
+  @ManyToOne(() => User, { onDelete: 'CASCADE' })
   @Field(() => User)
   receiver: User;
 }
