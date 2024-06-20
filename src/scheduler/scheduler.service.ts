@@ -2,8 +2,8 @@ import { SqsNotificationService } from './../sqs-notification/sqs-notification.s
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
-import { DAU } from 'src/admin/entities/dau.entity';
-import { MAU } from 'src/admin/entities/mau.entity';
+import { DAU } from 'src/admin/user/entities/dau.entity';
+import { MAU } from 'src/admin/user/entities/mau.entity';
 import { convertSolarToLunarDate } from 'src/common/utils/convertSolarToLunarDate.function';
 import { DailyEmotion } from 'src/daily-emotion/entities/daily-emotion.entity';
 import { FamilyPediaProfilePhoto } from 'src/family-pedia/entities/family-pedia-profile-photo.entity';

@@ -8,8 +8,8 @@ import { UserAuth } from 'src/user/entities/user-auth.entity';
 import { Letter } from 'src/letter/entities/letter.entity';
 import { SqsNotificationModule } from 'src/sqs-notification/sqs-notification.module';
 import { Family } from 'src/family/entities/family.entity';
-import { DAU } from 'src/admin/entities/dau.entity';
-import { MAU } from 'src/admin/entities/mau.entity';
+import { DAU } from 'src/admin/user/entities/dau.entity';
+import { MAU } from 'src/admin/user/entities/mau.entity';
 import { S3Module } from 'src/s3/s3.module';
 
 @Module({

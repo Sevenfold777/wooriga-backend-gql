@@ -187,8 +187,8 @@ export class MessageService {
       // 1. message 검색 => 생략 (argument input 사용)
 
       // 2. messageFamily 검색
-      const familiesToSend = await this.familyRepository
-        .createQueryBuilder('family')
+      const familiesToSend = await queryRunner.manager
+        .createQueryBuilder(Family, 'family')
         .select('family.id')
         .leftJoin(
           'family.messages',
@@ -217,10 +217,9 @@ export class MessageService {
             family: { id: family.id },
           }));
 
-        const insertResult = await this.messageFamilyRepository
-          .createQueryBuilder('msgFam')
+        const insertResult = await queryRunner.manager
+          .createQueryBuilder(MessageFamily, 'msgFam')
           .insert()
-          .into(MessageFamily)
           .values(insertValues)
           .updateEntity(false)
           .execute();

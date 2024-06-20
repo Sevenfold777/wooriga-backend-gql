@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { DAU } from './entities/dau.entity';
-import { MAU } from './entities/mau.entity';
+import { DAU } from './user/entities/dau.entity';
+import { MAU } from './user/entities/mau.entity';
 import { User } from 'src/user/entities/user.entity';
 import { Photo } from 'src/photo/entities/photo.entity';
 import { Family } from 'src/family/entities/family.entity';
