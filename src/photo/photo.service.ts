@@ -49,6 +49,11 @@ export class PhotoService {
     { userId, familyId }: AuthUserId,
     { title, payload, filesCount }: CreatePhotoReqDTO,
   ): Promise<CreatePhotoResDTO> {
+    const queryRunner = this.dataSource.createQueryRunner();
+
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
     try {
       if (filesCount <= 0) {
         throw new Error('At least one file to upload required.');
@@ -61,10 +66,9 @@ export class PhotoService {
       }
 
       // create photo Entity
-      const photo = await this.photoRepository
-        .createQueryBuilder('photo')
+      const photo = await queryRunner.manager
+        .createQueryBuilder(Photo, 'photo')
         .insert()
-        .into(Photo)
         .values({
           title,
           payload,
@@ -109,12 +113,14 @@ export class PhotoService {
         });
       });
 
-      await this.fileRespository
-        .createQueryBuilder('file')
+      await queryRunner.manager
+        .createQueryBuilder(PhotoFile, 'file')
         .insert()
         .into(PhotoFile)
         .values(filesToCreate)
         .execute();
+
+      await queryRunner.commitTransaction();
 
       // 알림은 파일 업로드 완료 후 처리
 
@@ -124,7 +130,10 @@ export class PhotoService {
         presignedUrls: presignedUrlRes.map((item) => item.url),
       };
     } catch (e) {
+      await queryRunner.rollbackTransaction();
       return { result: false, error: e.message };
+    } finally {
+      await queryRunner.release();
     }
   }
 
@@ -132,10 +141,15 @@ export class PhotoService {
     { userId, familyId }: AuthUserId,
     { photoId, photofilesUploaded }: PhotoFileUploadCompletedReqDTO,
   ): Promise<BaseResponseDTO> {
+    const queryRunner = this.dataSource.createQueryRunner();
+
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
     try {
       // validate if photo file exist
-      const photo = await this.photoRepository
-        .createQueryBuilder('photo')
+      const photo = await queryRunner.manager
+        .createQueryBuilder(Photo, 'photo')
         .select('photo.id')
         .addSelect('photo.title')
         .where('photo.id = :photoId', { photoId })
@@ -147,8 +161,8 @@ export class PhotoService {
         // 엔드포인트만 넘겨 받는 게 규약이지만, 앱단에서 실수할 가능성 높기에 이중 필터
         const strippedUrl = item.url.replace(/^\.com\//, '').split('?')[0];
 
-        return this.fileRespository
-          .createQueryBuilder('file')
+        return queryRunner.manager
+          .createQueryBuilder(PhotoFile, 'file')
           .update()
           .where('photoId = :photoId', { photoId })
           .andWhere('url = :url', { url: strippedUrl })
@@ -167,8 +181,8 @@ export class PhotoService {
         }
       });
 
-      const updatePhotoResult = await this.photoRepository
-        .createQueryBuilder()
+      const updatePhotoResult = await queryRunner.manager
+        .createQueryBuilder(Photo, 'photo')
         .update()
         .where('id = :photoId', { photoId })
         .set({ uploaded: true })
@@ -178,6 +192,8 @@ export class PhotoService {
       if (updatePhotoResult.affected !== 1) {
         throw new Error("Cannot update the photo entity's status to uploaded.");
       }
+
+      await queryRunner.commitTransaction();
 
       // 알림
       const titlePreview =
@@ -194,7 +210,10 @@ export class PhotoService {
 
       return { result: true };
     } catch (e) {
+      await queryRunner.rollbackTransaction();
       return { result: false, error: e.message };
+    } finally {
+      await queryRunner.release();
     }
   }
 
@@ -323,15 +342,24 @@ export class PhotoService {
     { userId, familyId }: AuthUserId,
     photoId: number,
   ): Promise<BaseResponseDTO> {
+    const queryRunner = this.dataSource.createQueryRunner();
+
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
     try {
-      const photoExist = await this.photoFamValidate(photoId, familyId);
+      const photoExist = await this.photoFamValidate(
+        photoId,
+        familyId,
+        queryRunner.manager.createQueryBuilder(Photo, 'photo'),
+      );
 
       if (!photoExist) {
         throw new Error('Cannot like the corresponding photo.');
       }
 
-      const likeExist = await this.likeRepository
-        .createQueryBuilder('like')
+      const likeExist = await queryRunner.manager
+        .createQueryBuilder(PhotoLike, 'like')
         .select('like.id')
         .where('like.photo.id = :photoId', { photoId })
         .andWhere('like.user.id = :userId', { userId })
@@ -341,17 +369,22 @@ export class PhotoService {
         throw new Error('Already liked the photo.');
       }
 
-      await this.likeRepository
-        .createQueryBuilder('like')
+      await queryRunner.manager
+        .createQueryBuilder(PhotoLike, 'like')
         .insert()
         .into(PhotoLike)
         .values({ user: { id: userId }, photo: { id: photoId } })
         .updateEntity(false)
         .execute();
 
+      await queryRunner.commitTransaction();
+
       return { result: true };
     } catch (e) {
+      await queryRunner.rollbackTransaction();
       return { result: false, error: e.message };
+    } finally {
+      await queryRunner.release();
     }
   }
 
@@ -582,9 +615,12 @@ export class PhotoService {
    * @param photoId 확인하고자 하는 Photo의 Id
    * @param familyId 해당 Photo와 매핑된 가족
    */
-  async photoFamValidate(photoId: number, familyId: number): Promise<boolean> {
-    const exist = await this.photoRepository
-      .createQueryBuilder('photo')
+  async photoFamValidate(
+    photoId: number,
+    familyId: number,
+    photoQueryBuilder = this.photoRepository.createQueryBuilder('photo'),
+  ): Promise<boolean> {
+    const exist = await photoQueryBuilder
       .select('photo.id')
       .where('photo.id = :photoId', { photoId })
       .andWhere('photo.familyId = :familyId', {

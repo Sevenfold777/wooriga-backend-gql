@@ -140,6 +140,11 @@ export class DailyEmotionService {
     { userId, familyId }: AuthUserId,
     { type }: ChooseDailyEmoReqDTO,
   ): Promise<BaseResponseDTO> {
+    const queryRunner = this.dataSource.createQueryRunner();
+
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
     try {
       const today = new Date(new Date().toLocaleDateString('ko-KR'));
 
@@ -150,10 +155,12 @@ export class DailyEmotionService {
       });
 
       // upsert 위해 query builder 대신 repo.save 사용
-      await this.dailyEmoRepository.save(emotion, {
+      await queryRunner.manager.getRepository(DailyEmotion).save(emotion, {
         reload: false,
         transaction: false,
       });
+
+      await queryRunner.commitTransaction();
 
       // 알림: send notification
       const sqsDTO = new SqsNotificationProduceDTO(
@@ -165,17 +172,15 @@ export class DailyEmotionService {
 
       return { result: true };
     } catch (e) {
+      await queryRunner.rollbackTransaction();
       return { result: false, error: e.message };
+    } finally {
+      await queryRunner.release();
     }
   }
 
   async deleteEmotion({ userId }: AuthUserId): Promise<BaseResponseDTO> {
     const today = new Date(new Date().toLocaleDateString('ko-KR'));
-
-    const queryRunner = this.dataSource.createQueryRunner();
-
-    queryRunner.connect();
-    queryRunner.startTransaction();
 
     try {
       const deleteResult = await this.dailyEmoRepository
@@ -192,14 +197,9 @@ export class DailyEmotionService {
         );
       }
 
-      await queryRunner.commitTransaction();
-
       return { result: true };
     } catch (e) {
-      await queryRunner.rollbackTransaction();
       return { result: false, error: e.message };
-    } finally {
-      queryRunner.release();
     }
   }
 

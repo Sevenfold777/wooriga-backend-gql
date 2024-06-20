@@ -95,7 +95,7 @@ export class S3Service {
         },
       });
 
-      const { Deleted } = await this.s3Client.send(command);
+      await this.s3Client.send(command);
     } catch (e) {
       return { result: false, error: e.message };
     }

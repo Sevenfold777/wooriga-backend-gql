@@ -223,11 +223,6 @@ export class LetterService {
     { userId }: AuthUserId,
     id: number,
   ): Promise<BaseResponseDTO> {
-    const queryRunner = this.dataSource.createQueryRunner();
-
-    queryRunner.connect();
-    queryRunner.startTransaction();
-
     try {
       const deleteResult = await this.letterRepository
         .createQueryBuilder('letter')
@@ -242,14 +237,9 @@ export class LetterService {
         throw new Error('Cannot delete the letter.');
       }
 
-      await queryRunner.commitTransaction();
-
       return { result: true };
     } catch (e) {
-      await queryRunner.rollbackTransaction();
       return { result: false, error: e.message };
-    } finally {
-      queryRunner.release();
     }
   }
 

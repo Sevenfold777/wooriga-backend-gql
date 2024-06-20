@@ -6,13 +6,12 @@ import { CreateQuestionReqDTO } from './dto/create-question-req.dto';
 import { EditQuestionReqDTO } from './dto/edit-question-req.dto';
 import { BaseResponseDTO } from 'src/common/dto/base-res.dto';
 import { AnswerQuestionReqDTO } from './dto/answer-question-req.dto';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
+import { DataSource, QueryRunner, Repository } from 'typeorm';
 import { FamilyPediaQuestion } from './entities/family-pedia-question';
 import { FamilyPediasResDTO } from './dto/family-pedias-res.dto';
 import { FamilyPediaResDTO } from './dto/family-pedia-res.dto';
 import { CreateResDTO } from 'src/common/dto/create-res.dto';
-import { CreateFamilyPediaReqDTO } from './dto/create-family-pedia-req.dto';
 import { SqsNotificationProduceDTO } from 'src/sqs-notification/dto/sqs-notification-produce.dto';
 import { NotificationType } from 'src/sqs-notification/constants/notification-type';
 import { S3Service } from 'src/s3/s3.service';
@@ -25,6 +24,7 @@ import { CreateProfilePhotoResDTO } from './dto/create-profile-photo-res.dto';
 @Injectable()
 export class FamilyPediaService {
   constructor(
+    @InjectDataSource() private dataSource: DataSource,
     @InjectRepository(FamilyPedia)
     private pediaRepository: Repository<FamilyPedia>,
     @InjectRepository(FamilyPediaQuestion)
@@ -87,9 +87,18 @@ export class FamilyPediaService {
     { familyId }: AuthUserId,
     { pediaId, url, width, height }: ProfilePhotoUploadCompletedReqDTO,
   ): Promise<BaseResponseDTO> {
+    const queryRunner = this.dataSource.createQueryRunner();
+
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
     try {
       // pedia owner가 나의 가족인지 확인
-      const pediaExist = await this.pediaFamValidate(pediaId, familyId);
+      const pediaExist = await this.pediaFamValidate(
+        pediaId,
+        familyId,
+        queryRunner.manager.createQueryBuilder(FamilyPedia, 'pedia'),
+      );
 
       if (!pediaExist) {
         throw new Error('Not authorized to update the profile photo.');
@@ -98,8 +107,8 @@ export class FamilyPediaService {
       // 엔드포인트만 넘겨 받는 게 규약이지만, 앱단에서 실수할 가능성 높기에 이중 필터
       const strippedUrl = url.replace(/^\.com\//, '').split('?')[0];
 
-      const updateResult = await this.profilePhotoRepository
-        .createQueryBuilder('photo')
+      const updateResult = await queryRunner.manager
+        .createQueryBuilder(FamilyPediaProfilePhoto, 'photo')
         .update()
         .where('familyPediaId = :pediaId', { pediaId })
         .andWhere('url = :url', { url: strippedUrl })
@@ -111,8 +120,8 @@ export class FamilyPediaService {
         throw new Error('Cannot update the profile photo entity.');
       }
 
-      const updatePediaResult = await this.pediaRepository
-        .createQueryBuilder('pedia')
+      const updatePediaResult = await queryRunner.manager
+        .createQueryBuilder(FamilyPedia, 'pedia')
         .update()
         .where('ownerId = :pediaId', { pediaId })
         .set({ profilePhoto: url })
@@ -122,6 +131,8 @@ export class FamilyPediaService {
       if (updatePediaResult.affected !== 1) {
         throw new Error('Cannot update the pedia entity.');
       }
+
+      await queryRunner.commitTransaction();
 
       // 알림
       const sqsDTO = new SqsNotificationProduceDTO(
@@ -133,7 +144,10 @@ export class FamilyPediaService {
 
       return { result: true };
     } catch (e) {
+      await queryRunner.rollbackTransaction();
       return { result: false, error: e.message };
+    } finally {
+      await queryRunner.release();
     }
   }
 
@@ -183,10 +197,15 @@ export class FamilyPediaService {
     { userId }: AuthUserId,
     photoId: number,
   ): Promise<BaseResponseDTO> {
+    const queryRunner = this.dataSource.createQueryRunner();
+
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
     try {
       // check if exist
-      const photo = await this.profilePhotoRepository
-        .createQueryBuilder('photo')
+      const photo = await queryRunner.manager
+        .createQueryBuilder(FamilyPediaProfilePhoto, 'photo')
         .select()
         .innerJoinAndSelect(
           'photo.familyPedia',
@@ -197,8 +216,8 @@ export class FamilyPediaService {
         .where('photo.id = :photoId', { photoId })
         .getOneOrFail();
 
-      const deleteResult = await this.profilePhotoRepository
-        .createQueryBuilder('photo')
+      const deleteResult = await queryRunner.manager
+        .createQueryBuilder(FamilyPediaProfilePhoto, 'photo')
         .delete()
         .where('id = :photoId', { photoId })
         .andWhere('familyPediaId = :userId', { userId })
@@ -209,8 +228,8 @@ export class FamilyPediaService {
       }
 
       if (photo.familyPedia.profilePhoto === photo.url) {
-        const updateResult = await this.pediaRepository
-          .createQueryBuilder('pedia')
+        const updateResult = await queryRunner.manager
+          .createQueryBuilder(FamilyPedia, 'pedia')
           .update()
           .where('ownerId = :userId', { userId })
           .set({ profilePhoto: process.env.FAMILY_PEDIA_DEFAULT_IMG })
@@ -228,53 +247,56 @@ export class FamilyPediaService {
         throw new Error('Cannot delete the image from the storage.');
       }
 
+      await queryRunner.commitTransaction();
+
       return { result: true };
     } catch (e) {
+      await queryRunner.rollbackTransaction();
       return { result: false, error: e.message };
+    } finally {
+      await queryRunner.release();
     }
   }
 
-  async createFamilyPedia({
-    ownerId,
-  }: CreateFamilyPediaReqDTO): Promise<BaseResponseDTO> {
-    try {
-      const defaultQuestions = [
-        '가장 좋아하는 음식이 무엇인가요?',
-        '어릴 적 꿈은 무엇이었나요?',
-        '요즘 여행 가보고 싶은 나라가 있나요? 어디인가요?',
-        '올해 가장 행복했던 일은 무엇인가요?',
-        '앞으로 해보고 싶은 것 하나를 꼽아보자면?',
-      ];
+  /*
+    userService에 의해서만 호출됨, sign up user에서 query runner 받아옴
+    transaction 역시 sign up에서 handle
+  */
+  async createFamilyPedia(
+    ownerId: number,
+    queryRunner: QueryRunner,
+  ): Promise<void> {
+    const defaultQuestions = [
+      '가장 좋아하는 음식이 무엇인가요?',
+      '어릴 적 꿈은 무엇이었나요?',
+      '요즘 여행 가보고 싶은 나라가 있나요? 어디인가요?',
+      '올해 가장 행복했던 일은 무엇인가요?',
+      '앞으로 해보고 싶은 것 하나를 꼽아보자면?',
+    ];
 
-      // insert new Pedia
-      const pediaResult = await this.pediaRepository
-        .createQueryBuilder('FamilyPedia')
-        .insert()
-        .into(FamilyPedia)
-        .values({ owner: { id: ownerId } })
-        .updateEntity(false)
-        .execute();
+    // insert new Pedia
+    const pediaResult = await queryRunner.manager
+      .createQueryBuilder(FamilyPedia, 'FamilyPedia')
+      .insert()
+      .values({ owner: { id: ownerId } })
+      .updateEntity(false)
+      .execute();
 
-      if (!pediaResult.raw.insertId) {
-        throw new Error('Cannot save the family pedia.');
-      }
-
-      // default question bulk insert
-      const qInsertQuery = this.pediaRepository
-        .createQueryBuilder('FamilyPedia')
-        .insert()
-        .into(FamilyPediaQuestion);
-
-      for (const q of defaultQuestions) {
-        qInsertQuery.values({ familyPedia: { ownerId }, question: q });
-      }
-
-      await qInsertQuery.execute();
-
-      return { result: true };
-    } catch (e) {
-      return { result: false, error: e.message };
+    if (!pediaResult.raw.insertId) {
+      throw new Error('Cannot save the family pedia.');
     }
+
+    // default question bulk insert
+    const qInsertQuery = queryRunner.manager
+      .createQueryBuilder(FamilyPediaQuestion, 'FamilyPedia')
+      .insert()
+      .into(FamilyPediaQuestion);
+
+    for (const q of defaultQuestions) {
+      qInsertQuery.values({ familyPedia: { ownerId }, question: q });
+    }
+
+    await qInsertQuery.execute();
   }
 
   async findPedias({
@@ -329,6 +351,7 @@ export class FamilyPediaService {
     }
   }
 
+  // transaction 하지 않음 => pediaFamValidate 포함 2회 db 접근 (아래 다른 메서드도 동일)
   async createQuestion(
     { userId, familyId }: AuthUserId,
     { question, pediaId }: CreateQuestionReqDTO,
@@ -511,9 +534,12 @@ export class FamilyPediaService {
     }
   }
 
-  async pediaFamValidate(pediaId: number, familyId: number): Promise<boolean> {
-    const exist = await this.pediaRepository
-      .createQueryBuilder('pedia')
+  async pediaFamValidate(
+    pediaId: number,
+    familyId: number,
+    pediaQueryBuilder = this.pediaRepository.createQueryBuilder('pedia'),
+  ): Promise<boolean> {
+    const exist = await pediaQueryBuilder
       .select('pedia.ownerId')
       .innerJoin('pedia.owner', 'owner', 'owner.familyId = :familyId', {
         familyId,

@@ -61,16 +61,16 @@ export class SchedulerService {
       const tomorrow = new Date(today.getTime() + 1000 * 60 * 60 * 24);
 
       // 1. message 검색
-      const messageToSend = await this.messageRepository
-        .createQueryBuilder('msg')
+      const messageToSend = await queryRunner.manager
+        .createQueryBuilder(Message, 'msg')
         .select('msg.id')
         .where('uploadAt >= :today', { today })
         .andWhere('uploadAt < :tomorrow', { tomorrow })
         .getOneOrFail();
 
       // 2. messageFamily 검색
-      const familiesToSend = await this.familyRepository
-        .createQueryBuilder('family')
+      const familiesToSend = await queryRunner.manager
+        .createQueryBuilder(Family, 'family')
         .select('family.id')
         .leftJoin(
           'family.messages',
@@ -99,10 +99,9 @@ export class SchedulerService {
             family: { id: family.id },
           }));
 
-        const insertResult = await this.messageFamRepository
-          .createQueryBuilder('msgFam')
+        const insertResult = await queryRunner.manager
+          .createQueryBuilder(MessageFamily, 'msgFam')
           .insert()
-          .into(MessageFamily)
           .values(insertValues)
           .updateEntity(false)
           .execute();
@@ -144,8 +143,8 @@ export class SchedulerService {
       // TODO: distinct family test
 
       // 1. 생일인 user 찾기
-      const query = this.userRepository
-        .createQueryBuilder('user')
+      const query = queryRunner.manager
+        .createQueryBuilder(User, 'user')
         .select('user.familyId')
         .addSelect('MIN(user.id)')
         .where(
@@ -197,10 +196,9 @@ export class SchedulerService {
             receivedAt: new Date(),
           }));
 
-        await this.messageFamRepository
-          .createQueryBuilder('msgFam')
+        await queryRunner.manager
+          .createQueryBuilder(MessageFamily, 'msgFam')
           .insert()
-          .into(MessageFamily)
           .values(insertValues)
           .updateEntity(false)
           .execute();
@@ -373,31 +371,29 @@ export class SchedulerService {
       const month = new Date(today.getTime() - 1000 * 60 * 60 * 24 * 30); // 30일 단위
 
       // 1. userAuth lastVisited 검색
-      const dau = await this.userAuthRepository
-        .createQueryBuilder('userAuth')
+      const dau = await queryRunner.manager
+        .createQueryBuilder(UserAuth, 'userAuth')
         .select()
         .where('userAuth.updatedAt >= :today', { today })
         .getCount();
 
-      const mau = await this.userAuthRepository
-        .createQueryBuilder('userAuth')
+      const mau = await queryRunner.manager
+        .createQueryBuilder(UserAuth, 'userAuth')
         .select()
         .where('userAuth.updatedAt >= :month', { month })
         .getCount();
 
       // 2. dau, mau repository에 저장
-      await this.dauRepository
-        .createQueryBuilder('dau')
+      await queryRunner.manager
+        .createQueryBuilder(DAU, 'dau')
         .insert()
-        .into(DAU)
         .values({ date: today, count: dau })
         .updateEntity(false)
         .execute();
 
-      await this.mauRepository
-        .createQueryBuilder('mau')
+      await queryRunner.manager
+        .createQueryBuilder(MAU, 'mau')
         .insert()
-        .into(MAU)
         .values({ date: today, count: mau })
         .updateEntity(false)
         .execute();
@@ -417,11 +413,16 @@ export class SchedulerService {
   async removeEmptyFamily(): Promise<void> {
     this.logger.log('scheduler invoked: [ removeEmptyFamily ]');
 
+    const queryRunner = this.dataSource.createQueryRunner();
+
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
     try {
       const membersCountAlias = 'membersCount';
 
-      const familyWithNoMembers = await this.familyRepository
-        .createQueryBuilder('family')
+      const familyWithNoMembers = await queryRunner.manager
+        .createQueryBuilder(Family, 'family')
         .select()
         .addSelect('COUNT(user.id)', membersCountAlias)
         .leftJoin('family.users', 'user')
@@ -433,8 +434,8 @@ export class SchedulerService {
         return;
       }
 
-      const deleteResult = await this.familyRepository
-        .createQueryBuilder('family')
+      const deleteResult = await queryRunner.manager
+        .createQueryBuilder(Family, 'family')
         .delete()
         .where('family.id IN (:...tgtFamilies)', {
           tgtFamilies: familyWithNoMembers.map((fam) => fam.id),
@@ -447,11 +448,16 @@ export class SchedulerService {
         );
       }
 
+      await queryRunner.commitTransaction();
+
       this.logger.log(
         `Removed ${familyWithNoMembers.length} families with no members.`,
       );
     } catch (e) {
+      await queryRunner.rollbackTransaction();
       this.logger.error(e);
+    } finally {
+      await queryRunner.release();
     }
   }
 

@@ -124,10 +124,9 @@ export class UserService {
       }
 
       // create user
-      const userResult = await this.userRepository
-        .createQueryBuilder('user')
+      const userResult = await queryRunner.manager
+        .createQueryBuilder(User, 'user')
         .insert()
-        .into(User)
         .values({
           email,
           userName,
@@ -147,13 +146,13 @@ export class UserService {
       const { accessToken, refreshToken } = await this.issueTokenAndUpdate(
         userId,
         familyIdToJoin,
+        queryRunner.manager.createQueryBuilder(UserAuth, 'userAuth'),
       );
 
       // create userAuth
-      await this.userAuthRepository
-        .createQueryBuilder('userAuth')
+      await queryRunner.manager
+        .createQueryBuilder(UserAuth, 'userAuth')
         .insert()
-        .into(UserAuth)
         .values({
           user: { id: userId },
           refreshToken,
@@ -162,8 +161,8 @@ export class UserService {
         .updateEntity(false)
         .execute();
 
-      // create family pedia service
-      await this.pediaService.createFamilyPedia({ ownerId: userId });
+      // create family pedia service // 에러 나면 여기서 Handle (return void)
+      await this.pediaService.createFamilyPedia(userId, queryRunner);
 
       await queryRunner.commitTransaction();
 
@@ -180,6 +179,11 @@ export class UserService {
     { userId }: AuthUserId,
     editUserReqDTO: EditUserReqDTO,
   ): Promise<UserResDTO> {
+    const queryRunner = this.dataSource.createQueryRunner();
+
+    queryRunner.connect();
+    queryRunner.startTransaction();
+
     try {
       const { birthday } = editUserReqDTO;
 
@@ -189,8 +193,8 @@ export class UserService {
         birthdayStr = `${birthday.slice(0, 4)}-${birthday.slice(4, 6)}-${birthday.slice(6)}`;
       }
 
-      const updateResult = await this.userRepository
-        .createQueryBuilder('user')
+      const updateResult = await queryRunner.manager
+        .createQueryBuilder(User, 'user')
         .update()
         .where('id = :userId', { userId })
         .set({
@@ -204,17 +208,22 @@ export class UserService {
         throw new Error('Cannot update the user with request body.');
       }
 
-      const userUpdated = await this.userRepository
-        .createQueryBuilder('user')
+      const userUpdated = await queryRunner.manager
+        .createQueryBuilder(User, 'user')
         .select()
         .where('user.id = :userId', { userId })
         .getOneOrFail();
+
+      await queryRunner.commitTransaction();
 
       this.eventEmitter.emit(USER_UPDATE_EVENT, userUpdated);
 
       return { result: true, user: userUpdated };
     } catch (e) {
+      await queryRunner.rollbackTransaction();
       return { result: false, error: e.message };
+    } finally {
+      queryRunner.release();
     }
   }
 
@@ -280,9 +289,14 @@ export class UserService {
   }
 
   async signOut({ userId, familyId }: AuthUserId): Promise<BaseResponseDTO> {
+    const queryRunner = this.dataSource.createQueryRunner();
+
+    queryRunner.connect();
+    queryRunner.startTransaction();
+
     try {
-      const updateUserResult = await this.userRepository
-        .createQueryBuilder('user')
+      const updateUserResult = await queryRunner.manager
+        .createQueryBuilder(User, 'user')
         .update()
         .where('user.id = :userId', { userId })
         .set({ fcmToken: null })
@@ -293,8 +307,8 @@ export class UserService {
         throw new Error('User update failed.');
       }
 
-      const updateAuthResult = await this.userAuthRepository
-        .createQueryBuilder('auth')
+      const updateAuthResult = await queryRunner.manager
+        .createQueryBuilder(UserAuth, 'auth')
         .update()
         .where('user.id = :userId', { userId })
         .set({ refreshToken: null })
@@ -309,7 +323,10 @@ export class UserService {
 
       return { result: true };
     } catch (e) {
+      await queryRunner.rollbackTransaction();
       return { result: false, error: e.message };
+    } finally {
+      queryRunner.release();
     }
   }
 
@@ -324,8 +341,8 @@ export class UserService {
     try {
       const { userId, familyId } = this.authService.verify(refreshToken);
 
-      const userAuth = await this.userAuthRepository
-        .createQueryBuilder('userAuth')
+      const userAuth = await queryRunner.manager
+        .createQueryBuilder(UserAuth, 'userAuth')
         .select()
         .leftJoin('userAuth.user', 'user', 'user.status = :status', {
           status: UserStatus.ACTIVE,
@@ -340,7 +357,11 @@ export class UserService {
       }
 
       const { accessToken: newAccessToken, refreshToken: newRefreshToken } =
-        await this.issueTokenAndUpdate(userId, familyId);
+        await this.issueTokenAndUpdate(
+          userId,
+          familyId,
+          queryRunner.manager.createQueryBuilder(UserAuth, 'userAuth'),
+        );
 
       await queryRunner.commitTransaction();
 
@@ -456,16 +477,16 @@ export class UserService {
             - daily emotion
        */
 
-      const userUpdatePromise = this.userRepository
-        .createQueryBuilder('user')
+      const userUpdatePromise = queryRunner.manager
+        .createQueryBuilder(User, 'user')
         .update()
         .where('id = :userId', { userId })
         .set({ status: UserStatus.DELETED, familyId: null, fcmToken: null })
         .updateEntity(false)
         .execute();
 
-      const userAuthPromise = this.userAuthRepository
-        .createQueryBuilder('auth')
+      const userAuthPromise = queryRunner.manager
+        .createQueryBuilder(UserAuth, 'auth')
         .update()
         .where('userId = :userId', { userId })
         .set({ refreshToken: null })
@@ -473,8 +494,8 @@ export class UserService {
         .execute();
 
       // photo to deleted
-      const photoUpdatePromise = this.photoRepository
-        .createQueryBuilder('photo')
+      const photoUpdatePromise = queryRunner.manager
+        .createQueryBuilder(Photo, 'photo')
         .update()
         .set({ familyId: null })
         .where('authorId = :userId', { userId })
@@ -482,8 +503,8 @@ export class UserService {
         .execute();
 
       // photo comment to deleted
-      const photoCommentPromise = this.photoCommentRepository
-        .createQueryBuilder('comment')
+      const photoCommentPromise = queryRunner.manager
+        .createQueryBuilder(PhotoComment, 'comment')
         .update()
         .set({ status: CommentStatus.DELETED })
         .where('authorId = :userId', { userId })
@@ -491,8 +512,8 @@ export class UserService {
         .execute();
 
       // message comment to deleted
-      const messageCommentPromise = this.messageCommentRepository
-        .createQueryBuilder('comment')
+      const messageCommentPromise = queryRunner.manager
+        .createQueryBuilder(MessageComment, 'comment')
         .update()
         .set({ status: CommentStatus.DELETED })
         .where('authorId = :userId', { userId })
@@ -523,6 +544,9 @@ export class UserService {
   async issueTokenAndUpdate(
     userId: number,
     familyId: number,
+    userAuthQueryBuilder = this.userAuthRepository.createQueryBuilder(
+      'userAuth',
+    ),
   ): Promise<{ accessToken: string; refreshToken: string }> {
     const accessToken = this.authService.sign({
       userId,
@@ -540,8 +564,7 @@ export class UserService {
       throw new Error('Token generation failed.');
     }
 
-    const updateResult = await this.userAuthRepository
-      .createQueryBuilder('userAuth')
+    const updateResult = await userAuthQueryBuilder
       .update()
       .where('user.id = :userId', { userId })
       .set({ refreshToken })
@@ -559,9 +582,14 @@ export class UserService {
     { userId }: AuthUserId,
     fcmTokenToUpdate: string,
   ): Promise<BaseResponseDTO> {
+    const queryRunner = this.dataSource.createQueryRunner();
+
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
     try {
-      const user = await this.userRepository
-        .createQueryBuilder('user')
+      const user = await queryRunner.manager
+        .createQueryBuilder(User, 'user')
         .select()
         .where('user.id = :userId', { userId })
         .getOneOrFail();
@@ -570,8 +598,8 @@ export class UserService {
         throw new Error('Unnecessary request for update fcm token.');
       }
 
-      const updateResult = await this.userRepository
-        .createQueryBuilder('user')
+      const updateResult = await queryRunner.manager
+        .createQueryBuilder(User, 'user')
         .update()
         .where('user.id = :userId', { userId })
         .set({ fcmToken: fcmTokenToUpdate })

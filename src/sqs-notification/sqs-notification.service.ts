@@ -68,6 +68,7 @@ export class SqsNotificationService
    * 그렇지 않으면 대기열에서 메세지 삭제, 에러 출력
    */
   async receiveNotificationPayload() {
+    return; // TODO: 배포 전 해제 (e2e test 용)
     let messagesReceived: Message[];
 
     const longPollingInterval = 20; // maximum

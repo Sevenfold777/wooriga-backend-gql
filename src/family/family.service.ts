@@ -37,8 +37,8 @@ export class FamilyService {
     await queryRunner.startTransaction();
 
     try {
-      const insertFamily = await this.familyRepository
-        .createQueryBuilder()
+      const insertFamily = await queryRunner.manager
+        .createQueryBuilder(Family, 'family')
         .insert()
         .into(Family)
         .values({})
@@ -47,8 +47,8 @@ export class FamilyService {
 
       const familyId = insertFamily.raw?.insertId;
 
-      await this.messageRepository
-        .createQueryBuilder()
+      await queryRunner.manager
+        .createQueryBuilder(MessageFamily, 'msgFam')
         .insert()
         .into(MessageFamily)
         .values({
@@ -75,20 +75,13 @@ export class FamilyService {
     exceptMe: boolean,
   ): Promise<FamilyResDTO> {
     try {
-      //   const myFamily = await this.familyRepository.findOneOrFail({
-      //     where: {
-      //       id: familyId,
-      //       ...(exceptMe && { users: { id: Not(userId) } }),
-      //     },
-      //     relations: { users: true },
-      //   });
-
       /**
        * repository 사용시 불필요한 distinct alias 쿼리가 발생하는 typeorm의 문제
        * 불필요하게 쿼리를 2번 보낼 필요가 없을 것으로 판단
        * => queryBuilder 통해 해결
        * (typeorm repository는 join 작업이 필요할 때 자체적으로 동작하는 사전 쿼리가 발생)
        * 그러나 query builder는 compile time에 오타 등을 잡아내지 못하는 문제...
+       * query builder 사용한 동적 쿼리
        */
       const query = this.familyRepository
         .createQueryBuilder('family')
@@ -128,8 +121,8 @@ export class FamilyService {
         throw new Error('Already in the same family.');
       }
 
-      const updateUser = await this.userRepository
-        .createQueryBuilder()
+      const updateUser = await queryRunner.manager
+        .createQueryBuilder(User, 'user')
         .update()
         .set({ family: { id: familyToJoin } })
         .where('id = :userId', { userId })
@@ -152,8 +145,8 @@ export class FamilyService {
         tokenType: TOKEN_TYPE.REFRESH,
       });
 
-      const updateAuth = await this.userAuthRepository
-        .createQueryBuilder('auth')
+      const updateAuth = await queryRunner.manager
+        .createQueryBuilder(UserAuth, 'auth')
         .update()
         .where('userId = : userId', { userId })
         .set({ refreshToken: refreshTokenNew })
@@ -165,9 +158,8 @@ export class FamilyService {
       }
 
       // 사용자 없는 family 정리는 scheduler module에서 batch job + onDelete Cascade
-
-      //   await queryRunner.rollbackTransaction(); // for test
       await queryRunner.commitTransaction();
+      //   await queryRunner.rollbackTransaction(); // for test
 
       this.eventEmitter.emit(FAMILY_JOIN_EVENT, {
         userId,

@@ -149,15 +149,24 @@ export class MessageService {
     { userId, familyId }: AuthUserId,
     messageFamId: number,
   ): Promise<BaseResponseDTO> {
+    const queryRunner = this.dataSource.createQueryRunner();
+
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
     try {
-      const msgFamExist = await this.msgFamValidate(messageFamId, familyId);
+      const msgFamExist = await this.msgFamValidate(
+        messageFamId,
+        familyId,
+        queryRunner.manager.createQueryBuilder(MessageFamily, 'msgFam'),
+      );
 
       if (!msgFamExist) {
         throw new Error('Cannot keep given message family.');
       }
 
-      const keepExist = await this.keepRepository
-        .createQueryBuilder('keep')
+      const keepExist = await queryRunner.manager
+        .createQueryBuilder(MessageKeep, 'keep')
         .select('keep.id')
         .innerJoin('keep.message', 'message', 'message.id = :messageFamId', {
           messageFamId,
@@ -169,10 +178,9 @@ export class MessageService {
         throw new Error('Already kept message.');
       }
 
-      await this.keepRepository
-        .createQueryBuilder('keep')
+      await queryRunner.manager
+        .createQueryBuilder(MessageKeep, 'keep')
         .insert()
-        .into(MessageKeep)
         .values({
           user: { id: userId },
           message: { id: messageFamId },
@@ -180,9 +188,14 @@ export class MessageService {
         .updateEntity(false)
         .execute();
 
+      await queryRunner.commitTransaction();
+
       return { result: true };
     } catch (e) {
+      await queryRunner.rollbackTransaction();
       return { result: false, error: e.message };
+    } finally {
+      await queryRunner.release();
     }
   }
 
@@ -318,10 +331,10 @@ export class MessageService {
   async msgFamValidate(
     messageFamId: number,
     familyId: number,
+    msgFamQueryBuilder = this.messageFamRepository.createQueryBuilder('msgFam'),
   ): Promise<boolean> {
     /* getExist보다 성능 이점 */
-    const exist = await this.messageFamRepository
-      .createQueryBuilder('msgFam')
+    const exist = await msgFamQueryBuilder
       .select('msgFam.id')
       .where('msgFam.id = :messageFamId', { messageFamId })
       .andWhere('msgFam.familyId = :familyId', { familyId })

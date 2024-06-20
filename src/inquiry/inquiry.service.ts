@@ -59,11 +59,6 @@ export class InquiryService {
     { userId }: AuthUserId,
     { title, payload }: CreateInquiryReqDTO,
   ): Promise<CreateResDTO> {
-    const queryRunner = this.dataSource.createQueryRunner();
-
-    queryRunner.connect();
-    queryRunner.startTransaction();
-
     try {
       const insertResult = await this.inquiryRepository
         .createQueryBuilder('inquiry')
@@ -75,14 +70,9 @@ export class InquiryService {
 
       const inquiryId = insertResult.raw.insertId;
 
-      await queryRunner.commitTransaction();
-
       return { result: true, id: inquiryId };
     } catch (e) {
-      await queryRunner.rollbackTransaction();
       return { result: false, error: e.message };
-    } finally {
-      queryRunner.release();
     }
   }
 
@@ -90,11 +80,6 @@ export class InquiryService {
     { userId }: AuthUserId,
     { id, title, payload }: EditInquiryReqDTO,
   ): Promise<BaseResponseDTO> {
-    const queryRunner = this.dataSource.createQueryRunner();
-
-    queryRunner.connect();
-    queryRunner.startTransaction();
-
     try {
       const updateResult = await this.inquiryRepository
         .createQueryBuilder('inquiry')
@@ -109,14 +94,9 @@ export class InquiryService {
         throw new Error('Cannot update the inquiry.');
       }
 
-      await queryRunner.commitTransaction();
-
       return { result: true };
     } catch (e) {
-      await queryRunner.rollbackTransaction();
       return { result: false, error: e.message };
-    } finally {
-      queryRunner.release();
     }
   }
 
@@ -124,11 +104,6 @@ export class InquiryService {
     { userId }: AuthUserId,
     id: number,
   ): Promise<BaseResponseDTO> {
-    const queryRunner = this.dataSource.createQueryRunner();
-
-    queryRunner.connect();
-    queryRunner.startTransaction();
-
     try {
       const deleteResult = await this.inquiryRepository
         .createQueryBuilder('inquiry')
@@ -143,15 +118,9 @@ export class InquiryService {
         throw new Error('Cannot delete the inquiry');
       }
 
-      await queryRunner.commitTransaction();
-
       return { result: true };
     } catch (e) {
-      await queryRunner.rollbackTransaction();
-
       return { result: false, error: e.message };
-    } finally {
-      queryRunner.release();
     }
   }
 }
