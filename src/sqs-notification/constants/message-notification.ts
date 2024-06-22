@@ -1,5 +1,5 @@
-import { IsNumber, IsOptional, IsString } from 'class-validator';
-import { NotificationType } from './notification-type';
+import { IsNumber, IsOptional, IsString } from "class-validator";
+import { NotificationType } from "./notification-type";
 
 export type MessageNotifParamType = {
   [NotificationType.MESSAGE_TODAY]: MessageTodayParam;
