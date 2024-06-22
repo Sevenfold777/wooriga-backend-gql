@@ -1,5 +1,5 @@
-import { IsNumber, IsOptional, IsString } from 'class-validator';
-import { NotificationType } from './notification-type';
+import { IsNumber, IsOptional, IsString } from "class-validator";
+import { NotificationType } from "./notification-type";
 
 export type PhotoNotifParamType = {
   [NotificationType.PHOTO_CREATE]: PhotoCreateParam;
@@ -35,3 +35,5 @@ export class CommentPhotoParam {
   @IsNumber()
   familyId: number;
 }
+
+// 주석 변경

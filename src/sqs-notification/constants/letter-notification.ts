@@ -1,7 +1,7 @@
-import 'reflect-metadata';
-import { Type } from 'class-transformer';
-import { IsBoolean, IsNumber, ValidateNested } from 'class-validator';
-import { NotificationType } from './notification-type';
+import "reflect-metadata";
+import { Type } from "class-transformer";
+import { IsBoolean, IsNumber, ValidateNested } from "class-validator";
+import { NotificationType } from "./notification-type";
 
 export type LetterNotifParamType = {
   [NotificationType.LETTER_SEND]: LetterSendParam;

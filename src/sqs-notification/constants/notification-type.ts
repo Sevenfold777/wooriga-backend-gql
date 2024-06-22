@@ -1,8 +1,8 @@
-import { DailyEmotionNotifParamType } from './daily-emotion-notification';
-import { FamilyPediaNotifParamType } from './family-pedia-notification';
-import { LetterNotifParamType } from './letter-notification';
-import { MessageNotifParamType } from './message-notification';
-import { PhotoNotifParamType } from './photo-notification';
+import { DailyEmotionNotifParamType } from "./daily-emotion-notification";
+import { FamilyPediaNotifParamType } from "./family-pedia-notification";
+import { LetterNotifParamType } from "./letter-notification";
+import { MessageNotifParamType } from "./message-notification";
+import { PhotoNotifParamType } from "./photo-notification";
 
 /*
  * ParamType과 같이 서비스별 분류 하려고 했으나
@@ -13,28 +13,28 @@ import { PhotoNotifParamType } from './photo-notification';
  */
 export enum NotificationType {
   // message
-  MESSAGE_TODAY = 'MESSAGE_TODAY',
-  MESSAGE_BIRTHDAY = 'MESSAGE_BIRTHDAY',
-  COMMENT_MESSAGE = 'COMMENT_MESSAGE',
+  MESSAGE_TODAY = "MESSAGE_TODAY",
+  MESSAGE_BIRTHDAY = "MESSAGE_BIRTHDAY",
+  COMMENT_MESSAGE = "COMMENT_MESSAGE",
 
   // photo
-  PHOTO_CREATE = 'PHOTO_CREATE',
-  COMMENT_PHOTO = 'COMMENT_PHOTO',
+  PHOTO_CREATE = "PHOTO_CREATE",
+  COMMENT_PHOTO = "COMMENT_PHOTO",
 
   // letter
-  LETTER_SEND = 'LETTER_SEND',
-  TIMECAPSULE_OPEN = 'TIMECAPSULE_OPEN',
-  NOTIFY_BIRTHDAY = 'NOTIFY_BIRTHDAY',
+  LETTER_SEND = "LETTER_SEND",
+  TIMECAPSULE_OPEN = "TIMECAPSULE_OPEN",
+  NOTIFY_BIRTHDAY = "NOTIFY_BIRTHDAY",
 
   // daily-emotion
-  EMOTION_CHOSEN = 'EMOTION_CHOSEN',
-  EMOTION_POKE = 'EMOTION_POKE',
+  EMOTION_CHOSEN = "EMOTION_CHOSEN",
+  EMOTION_POKE = "EMOTION_POKE",
 
   // family-pedia
-  PEDIA_QUESTION_CREATED = 'PEDIA_QUESTION_CREATED',
-  PEDIA_QUESTION_EDITTED = 'PEDIA_QUESTION_EDITTED',
-  PEDIA_ANSWER = 'PEDIA_ANSWER',
-  PEDIA_EDIT_PHOTO = 'PEDIA_EDIT_PHOTO',
+  PEDIA_QUESTION_CREATED = "PEDIA_QUESTION_CREATED",
+  PEDIA_QUESTION_EDITTED = "PEDIA_QUESTION_EDITTED",
+  PEDIA_ANSWER = "PEDIA_ANSWER",
+  PEDIA_EDIT_PHOTO = "PEDIA_EDIT_PHOTO",
 }
 
 export type NotificationParamType = MessageNotifParamType &
