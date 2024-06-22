@@ -38,4 +38,7 @@ export class PediaEditPhotoParam {
 
   @IsNumber()
   ownerId: number;
+
+  @IsNumber()
+  editorId: number;
 }
