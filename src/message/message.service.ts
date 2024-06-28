@@ -15,7 +15,7 @@ import { CommentStatus } from 'src/common/constants/comment-status.enum';
 import { AuthUserId } from 'src/auth/constants/auth-user-id.type';
 import { MsgsResDTO } from './dto/messages-res.dto';
 import { CreateResDTO } from 'src/common/dto/create-res.dto';
-import { SqsNotificationProduceDTO } from 'src/sqs-notification/dto/sqs-notification-produce.dto';
+import { SqsNotificationReqDTO } from 'src/sqs-notification/dto/sqs-notification-req.dto';
 import { NotificationType } from 'src/sqs-notification/constants/notification-type';
 
 @Injectable()
@@ -287,7 +287,7 @@ export class MessageService {
       const commentPreview =
         payload.length > 10 ? payload.slice(0, 10) + '...' : payload;
 
-      const sqsDTO = new SqsNotificationProduceDTO(
+      const sqsDTO = new SqsNotificationReqDTO(
         NotificationType.COMMENT_MESSAGE,
         { familyId, messageFamId, authorId: userId, commentPreview },
       );

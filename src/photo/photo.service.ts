@@ -21,7 +21,7 @@ import { CommentStatus } from 'src/common/constants/comment-status.enum';
 import { PhotoFileMetaDataDTO } from './dto/photo-file-metadata.dto';
 import * as DataLoader from 'dataloader';
 import { PhotoCommentMetaDataDTO } from './dto/photo-comment-metadata.dto';
-import { SqsNotificationProduceDTO } from 'src/sqs-notification/dto/sqs-notification-produce.dto';
+import { SqsNotificationReqDTO } from 'src/sqs-notification/dto/sqs-notification-req.dto';
 import { NotificationType } from 'src/sqs-notification/constants/notification-type';
 import { CreatePhotoReqDTO } from './dto/create-photo-req.dto';
 import { CreatePhotoResDTO } from './dto/create-photo-res.dto';
@@ -201,10 +201,12 @@ export class PhotoService {
           ? photo.title.slice(0, 10) + '...'
           : photo.title;
 
-      const sqsDTO = new SqsNotificationProduceDTO(
-        NotificationType.PHOTO_CREATE,
-        { photoId, familyId, authorId: userId, titlePreview },
-      );
+      const sqsDTO = new SqsNotificationReqDTO(NotificationType.PHOTO_CREATE, {
+        photoId,
+        familyId,
+        authorId: userId,
+        titlePreview,
+      });
 
       this.sqsNotificationService.sendNotification(sqsDTO);
 
@@ -436,10 +438,12 @@ export class PhotoService {
       const commentPreview =
         payload.length > 10 ? payload.slice(0, 10) + '...' : payload;
 
-      const sqsDTO = new SqsNotificationProduceDTO(
-        NotificationType.COMMENT_PHOTO,
-        { photoId, familyId, authorId: userId, commentPreview },
-      );
+      const sqsDTO = new SqsNotificationReqDTO(NotificationType.COMMENT_PHOTO, {
+        photoId,
+        familyId,
+        authorId: userId,
+        commentPreview,
+      });
 
       this.sqsNotificationService.sendNotification(sqsDTO);
 

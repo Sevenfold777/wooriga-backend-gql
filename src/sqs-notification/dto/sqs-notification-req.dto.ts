@@ -3,7 +3,7 @@ import {
   NotificationType,
 } from '../constants/notification-type';
 
-export class SqsNotificationProduceDTO<T extends NotificationType> {
+export class SqsNotificationReqDTO<T extends NotificationType> {
   type: T;
 
   param: NotificationParamType[T];

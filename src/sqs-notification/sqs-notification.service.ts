@@ -12,7 +12,7 @@ import {
   DeleteMessageBatchCommand,
   Message,
 } from '@aws-sdk/client-sqs';
-import { SqsNotificationProduceDTO } from './dto/sqs-notification-produce.dto';
+import { SqsNotificationReqDTO } from './dto/sqs-notification-req.dto';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { NotificationType } from './constants/notification-type';
 import { SQS_NOTIFICATION_STORE_RECEIVE_EVENT } from 'src/common/constants/events';
@@ -45,8 +45,7 @@ export class SqsNotificationService
     this.client.destroy();
   }
 
-  async sendNotification(body: SqsNotificationProduceDTO<NotificationType>) {
-    return; // TODO: 배포 전 해제 (e2e test 용)
+  async sendNotification(body: SqsNotificationReqDTO<NotificationType>) {
     try {
       const command = new SendMessageCommand({
         DelaySeconds: 0,
@@ -68,7 +67,6 @@ export class SqsNotificationService
    * 그렇지 않으면 대기열에서 메세지 삭제, 에러 출력
    */
   async receiveNotificationPayload() {
-    return; // TODO: 배포 전 해제 (e2e test 용)
     let messagesReceived: Message[];
 
     const longPollingInterval = 20; // maximum

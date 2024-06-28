@@ -6,7 +6,7 @@ import { MessageFamily } from 'src/message/entities/message-family.entity';
 import { MessageKeep } from 'src/message/entities/message-keep.entity';
 import { Message } from 'src/message/entities/message.entity';
 import { NotificationType } from 'src/sqs-notification/constants/notification-type';
-import { SqsNotificationProduceDTO } from 'src/sqs-notification/dto/sqs-notification-produce.dto';
+import { SqsNotificationReqDTO } from 'src/sqs-notification/dto/sqs-notification-req.dto';
 import { DataSource, Repository } from 'typeorm';
 import { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
 import { CountResDTO } from '../dto/count-res.dto';
@@ -171,17 +171,14 @@ export class MessageService {
   }
 
   async sendMsg(id: number) {
-    const BATCH_ITEMS_COUNT = 500;
+    const BATCH_ITEMS_COUNT = 100;
     const queryRunner = this.dataSource.createQueryRunner();
 
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
     try {
-      const today = new Date(
-        new Date('2023-10-20').toLocaleDateString('ko-KR'),
-      ); // for test
-      //   const today = new Date(new Date().toLocaleDateString('ko-KR'));
+      const today = new Date(new Date().toLocaleDateString('ko-KR'));
       const tomorrow = new Date(today.getTime() + 1000 * 60 * 60 * 24);
 
       // 1. message 검색 => 생략 (argument input 사용)
@@ -229,7 +226,7 @@ export class MessageService {
           : this.logger.log(insertResult);
 
         // 4. 알림: sqs notif 요청
-        const sqsDTO = new SqsNotificationProduceDTO(
+        const sqsDTO = new SqsNotificationReqDTO(
           NotificationType.MESSAGE_TODAY,
           { familyIds: familiesByBatch.map((f) => f.id) },
         );

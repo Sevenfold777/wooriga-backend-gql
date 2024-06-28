@@ -13,7 +13,7 @@ import { User } from 'src/user/entities/user.entity';
 import { UserStatus } from 'src/user/constants/user-status.enum';
 import { PaginationByDateReqDTO } from './dto/pagination-by-date-req.dto';
 import { DailyEmoByDateDTO } from './dto/daily-emo-by-date.dto';
-import { SqsNotificationProduceDTO } from 'src/sqs-notification/dto/sqs-notification-produce.dto';
+import { SqsNotificationReqDTO } from 'src/sqs-notification/dto/sqs-notification-req.dto';
 import { NotificationType } from 'src/sqs-notification/constants/notification-type';
 
 @Injectable()
@@ -163,7 +163,7 @@ export class DailyEmotionService {
       await queryRunner.commitTransaction();
 
       // 알림: send notification
-      const sqsDTO = new SqsNotificationProduceDTO(
+      const sqsDTO = new SqsNotificationReqDTO(
         NotificationType.EMOTION_CHOSEN,
         { familyId, userId },
       );
@@ -217,10 +217,10 @@ export class DailyEmotionService {
         .getOneOrFail();
 
       // 알림: send notification
-      const sqsDTO = new SqsNotificationProduceDTO(
-        NotificationType.EMOTION_POKE,
-        { userId: targetUser.id, familyId },
-      );
+      const sqsDTO = new SqsNotificationReqDTO(NotificationType.EMOTION_POKE, {
+        userId: targetUser.id,
+        familyId,
+      });
 
       // 알림 보내는 것 자체가 목적이므로, 예외적으로 await 붙임
       await this.sqsNotificationService.sendNotification(sqsDTO);

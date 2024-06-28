@@ -18,7 +18,7 @@ import { PhotoFile } from 'src/photo/entities/photo-file.entity';
 import { Photo } from 'src/photo/entities/photo.entity';
 import { S3Service } from 'src/s3/s3.service';
 import { NotificationType } from 'src/sqs-notification/constants/notification-type';
-import { SqsNotificationProduceDTO } from 'src/sqs-notification/dto/sqs-notification-produce.dto';
+import { SqsNotificationReqDTO } from 'src/sqs-notification/dto/sqs-notification-req.dto';
 import { UserStatus } from 'src/user/constants/user-status.enum';
 import { UserAuth } from 'src/user/entities/user-auth.entity';
 import { User } from 'src/user/entities/user.entity';
@@ -111,7 +111,7 @@ export class SchedulerService {
           : console.log(insertResult);
 
         // 4. 알림: sqs notif 요청
-        const sqsDTO = new SqsNotificationProduceDTO(
+        const sqsDTO = new SqsNotificationReqDTO(
           NotificationType.MESSAGE_TODAY,
           { familyIds: familiesByBatch.map((f) => f.id) },
         );
@@ -204,7 +204,7 @@ export class SchedulerService {
           .execute();
 
         // 3. 알림: sqs notif 요청
-        const sqsDTO = new SqsNotificationProduceDTO(
+        const sqsDTO = new SqsNotificationReqDTO(
           NotificationType.MESSAGE_BIRTHDAY,
           { familyIds: familyByBatch.map((user) => user.familyId) },
         );
@@ -297,15 +297,12 @@ export class SchedulerService {
     const usersOnBirthday = await query.getMany();
 
     // 2. 알림: sqs notif 요청
-    const sqsDTO = new SqsNotificationProduceDTO(
-      NotificationType.NOTIFY_BIRTHDAY,
-      {
-        familyIdsWithBirthdayUserId: usersOnBirthday.map((user) => ({
-          familyId: user.familyId,
-          birthdayUserId: user.id,
-        })),
-      },
-    );
+    const sqsDTO = new SqsNotificationReqDTO(NotificationType.NOTIFY_BIRTHDAY, {
+      familyIdsWithBirthdayUserId: usersOnBirthday.map((user) => ({
+        familyId: user.familyId,
+        birthdayUserId: user.id,
+      })),
+    });
 
     this.sqsNotificationService.sendNotification(sqsDTO);
   }
@@ -343,7 +340,7 @@ export class SchedulerService {
       );
 
       // 2. 알림: sqs notif 요청
-      const sqsDTO = new SqsNotificationProduceDTO(
+      const sqsDTO = new SqsNotificationReqDTO(
         NotificationType.TIMECAPSULE_OPEN,
         {
           timaCapsules: lettersByBatch.map((letter) => ({

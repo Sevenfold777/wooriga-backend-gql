@@ -12,7 +12,7 @@ import { FamilyPediaQuestion } from './entities/family-pedia-question';
 import { FamilyPediasResDTO } from './dto/family-pedias-res.dto';
 import { FamilyPediaResDTO } from './dto/family-pedia-res.dto';
 import { CreateResDTO } from 'src/common/dto/create-res.dto';
-import { SqsNotificationProduceDTO } from 'src/sqs-notification/dto/sqs-notification-produce.dto';
+import { SqsNotificationReqDTO } from 'src/sqs-notification/dto/sqs-notification-req.dto';
 import { NotificationType } from 'src/sqs-notification/constants/notification-type';
 import { S3Service } from 'src/s3/s3.service';
 import { S3Directory } from 'src/s3/constants/s3-directory.enum';
@@ -84,7 +84,7 @@ export class FamilyPediaService {
   }
 
   async profilePhotoUploadCompleted(
-    { familyId }: AuthUserId,
+    { userId, familyId }: AuthUserId,
     { pediaId, url, width, height }: ProfilePhotoUploadCompletedReqDTO,
   ): Promise<BaseResponseDTO> {
     const queryRunner = this.dataSource.createQueryRunner();
@@ -135,9 +135,9 @@ export class FamilyPediaService {
       await queryRunner.commitTransaction();
 
       // 알림
-      const sqsDTO = new SqsNotificationProduceDTO(
+      const sqsDTO = new SqsNotificationReqDTO(
         NotificationType.PEDIA_EDIT_PHOTO,
-        { familyId, ownerId: pediaId },
+        { familyId, ownerId: pediaId, editorId: userId },
       );
 
       this.sqsNotificationService.sendNotification(sqsDTO);
@@ -379,7 +379,7 @@ export class FamilyPediaService {
       const questionId = insertResult.raw.insertId;
 
       // 알림
-      const sqsDTO = new SqsNotificationProduceDTO(
+      const sqsDTO = new SqsNotificationReqDTO(
         NotificationType.PEDIA_QUESTION_CREATED,
         { ownerId: pediaId, familyId },
       );
@@ -422,7 +422,7 @@ export class FamilyPediaService {
       }
 
       // 알림
-      const sqsDTO = new SqsNotificationProduceDTO(
+      const sqsDTO = new SqsNotificationReqDTO(
         NotificationType.PEDIA_QUESTION_EDITTED,
         { ownerId: pediaId, familyId },
       );
@@ -521,10 +521,10 @@ export class FamilyPediaService {
       }
 
       // 알림
-      const sqsDTO = new SqsNotificationProduceDTO(
-        NotificationType.PEDIA_ANSWER,
-        { familyId, ownerId: userId },
-      );
+      const sqsDTO = new SqsNotificationReqDTO(NotificationType.PEDIA_ANSWER, {
+        familyId,
+        ownerId: userId,
+      });
 
       this.sqsNotificationService.sendNotification(sqsDTO);
 

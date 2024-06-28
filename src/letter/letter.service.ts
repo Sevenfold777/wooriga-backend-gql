@@ -18,7 +18,7 @@ import { LetterGuideResDTO } from './dto/letter-guide-res.dto';
 import { User } from 'src/user/entities/user.entity';
 import { SqsNotificationService } from 'src/sqs-notification/sqs-notification.service';
 import { NotificationType } from 'src/sqs-notification/constants/notification-type';
-import { SqsNotificationProduceDTO } from 'src/sqs-notification/dto/sqs-notification-produce.dto';
+import { SqsNotificationReqDTO } from 'src/sqs-notification/dto/sqs-notification-req.dto';
 import { EditLetterKeptReqDTO } from './dto/edit-letter-kept-req.dto';
 
 @Injectable()
@@ -129,7 +129,7 @@ export class LetterService {
           letterId = insertResult.raw?.insertId;
 
           // request notification
-          const sqsDTO = new SqsNotificationProduceDTO(
+          const sqsDTO = new SqsNotificationReqDTO(
             NotificationType.LETTER_SEND,
             {
               receiverId: insertPromises[i].receiverId,
