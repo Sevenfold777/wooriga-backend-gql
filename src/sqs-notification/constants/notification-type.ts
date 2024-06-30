@@ -9,7 +9,6 @@ import { PhotoNotifParamType } from './photo-notification';
  * typescript에서 여러 개의 enum을 합치는 것을 지원하지 않음
  * 여러 개의 enum을 합쳐서 하나의 type을 선언할 수 있지만
  * class-validator 사용시 validation이 지나치게 복잡해짐
- * (TODO: 모든 notification type에 대하여 param type이 작성됐는지 unit test 작성하여 빠뜨리지 않고 구현)
  */
 export enum NotificationType {
   // message

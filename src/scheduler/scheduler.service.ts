@@ -140,8 +140,6 @@ export class SchedulerService {
       const todaySolar = new Date(new Date().toLocaleDateString('ko-KR'));
       const todayLunar = await convertSolarToLunarDate(todaySolar);
 
-      // TODO: distinct family test
-
       // 1. 생일인 user 찾기
       const query = queryRunner.manager
         .createQueryBuilder(User, 'user')
@@ -173,7 +171,6 @@ export class SchedulerService {
         );
       }
 
-      // TODO: group by로 distinct 역할 수행 확인
       const familyHasBirthday = await query.groupBy('user.familyId').getMany();
 
       // 2. user.familyId에 랜덤 생일 메세지 보내기

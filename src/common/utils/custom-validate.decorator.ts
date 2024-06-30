@@ -55,5 +55,3 @@ export function CustomValidate<T extends object>(
     };
   };
 }
-
-// TODO: 여러 개의 argument를 패싱할 때 CustomValidator가 적용돼야 할 argument를 지정해주는 추가적인 데코레이터

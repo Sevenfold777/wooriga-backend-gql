@@ -33,7 +33,6 @@ export class MessageService {
 
   async findMsgLatest({ userId, familyId }: AuthUserId): Promise<MsgResDTO> {
     try {
-      // TODO: left join 3개 Vs. Multiple Queries (test 해보기)
       /**
        * - join의 대상이 그렇게 많지 않기 때문에 multiple query로 나누지 않음
        * - join에 조건 주어 성능 향상 노력

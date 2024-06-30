@@ -16,6 +16,8 @@
 
 - [GraphQL 전환](#graphql-전환)
 
+- [Custom Validator 적용 - Runtime Error 방지](#custom-validator--runtime-error-방지)
+
 - [TypeORM Query Builder 도입](#typeorm-query-builder-도입)
 
 - [Jest E2E Test](#jest-e2e-test)
@@ -749,6 +751,75 @@
   );
 
   ```
+
+## Custom Validator : Runtime Error 방지
+
+- 알림 시스템 분리, NestJS Event 도입 등으로 인해 Argument Validation 없이 호출되는 함수 존재
+
+- 이에 대한 Typescript의 Compile Time에 에러 체크 불가, 잠재적 Runtime Error 문제
+
+- Global Pipe를 타지 않는, 프로젝트 내 호출 함수에 대하여 `class-validator`를 적용할 수 있도록 `@CustomValidator` 정의, 편리한 validation 프로세스 구축
+
+- [notification.service.ts](https://github.com/Sevenfold777/wooriga-backend-gql/blob/1499c36e5ee3e8849e136f7f0b06aa3fd89f9787/src/notification/notification.service.ts#L38) : `SQS`로부터 수신한 Message Body에 대한 Validation 사례
+
+  ```typescript
+
+  @OnEvent(SQS_NOTIFICATION_STORE_RECEIVE_EVENT)
+  @CustomValidate(CreateNotificationReqDTO) // <-- Custome Validator 적용
+  private async handleNotificationStore(
+    notifList: CreateNotificationReqDTO[],
+  ): Promise<void> {
+    try {
+      const insertValues: QueryDeepPartialEntity<Notification>[] = [];
+
+      for (const notif of notifList) {
+        const { title, body, screen, param, receiverId } = notif;
+
+        // ...
+      }
+
+      await this.notificationRepository
+        .createQueryBuilder('notif')
+        .insert()
+        .into(Notification)
+        .values(insertValues)
+        .updateEntity(false)
+        .execute();
+    } catch (e) {
+      this.logger.error(e);
+    }
+  }
+
+  ```
+
+- [create-notification-req.dto.ts](https://github.com/Sevenfold777/wooriga-backend-gql/blob/1499c36e5ee3e8849e136f7f0b06aa3fd89f9787/src/notification/dto/create-notification-req.dto.ts)
+
+  ```typescript
+  // GraphQL과 무관한 DTO (SQS로부터 consume)
+  export class CreateNotificationReqDTO {
+    @IsNotEmpty()
+    @IsString()
+    title: string;
+
+    @IsNotEmpty()
+    @IsString()
+    body: string;
+
+    @IsOptional()
+    @IsString()
+    screen?: string;
+
+    @IsOptional()
+    @IsObject()
+    param?: object;
+
+    @IsNumber()
+    @Min(1)
+    receiverId: number;
+  }
+  ```
+
+- 이를 통해 예측 불가능한 Runtime Error를 핸들링 하며 신뢰성 있는 프로그램 개발, 개발자 간 협업에 이점
 
 ## TypeORM Query Builder 도입
 

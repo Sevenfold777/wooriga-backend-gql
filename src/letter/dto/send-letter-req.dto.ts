@@ -31,7 +31,7 @@ export class SendLetterReqDTO {
   isTimeCapsule: boolean;
 
   @Field(() => Date, { nullable: true })
-  @IsDate() // TODO: test 해보기
+  @IsDate()
   @IsOptional()
   receiveDate?: Date;
 

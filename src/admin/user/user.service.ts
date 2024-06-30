@@ -136,44 +136,6 @@ export class UserService {
       }
 
       return { result: true, userDetails };
-
-      /* 
-        join 매우 많은 쿼리, 최적화 필요
-        일단 take를 너무 많이 가져 가지 않는 pagination으로 성능 하락 방어
-        
-        향후 방안 1. query 나눠서 전송 + batch load (=> 이것보다 지금 방식이 더욱 효율적)
-        향후 방안 2. caching 또는, user_stat 테이블 만들어서 통계 기록하기
-       */
-      // 기존 단순 쿼리 방식 : local DB에 적용해도 약 30초 걸림
-      //   const { raw: usersRaw, entities: userEntities } =
-      //     await this.userRepository
-      //       .createQueryBuilder('user')
-      //       .select()
-      //       .addSelect('COUNT(DISTINCT msgComment.id)', 'msgCommentCount')
-      //       .addSelect('COUNT(DISTINCT letter.id)', 'letterCount')
-      //       .addSelect('COUNT(DISTINCT photo.id)', 'photoCount')
-      //       .addSelect('COUNT(DISTINCT photoComment.id)', 'photoCommentCount')
-      //       .addSelect('COUNT(DISTINCT emotion.id)', 'emotionCount')
-      //       .innerJoinAndSelect('user.userAuth', 'auth')
-      //       .leftJoin(
-      //         'message_family_comment',
-      //         'msgComment',
-      //         'msgComment.authorId = user.id',
-      //       )
-      //       .leftJoin('letter', 'letter', 'letter.senderId = user.id')
-      //       .leftJoin('photo', 'photo', 'photo.authorId = user.id')
-      //       .leftJoin(
-      //         'photo_comment',
-      //         'photoComment',
-      //         'photoComment.authorId = user.id',
-      //       )
-      //       .leftJoin('daily_emotion', 'emotion', 'emotion.userId = user.id')
-      //       .groupBy('user.id')
-      //       .orderBy('user.id', 'DESC')
-      //       .offset(take * prev)
-      //       .limit(take)
-      //       .getRawAndEntities();
-      //   console.log({ usersRaw });
     } catch (e) {
       return { result: false, error: e.message };
     }
