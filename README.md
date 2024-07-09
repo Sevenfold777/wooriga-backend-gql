@@ -4,6 +4,8 @@
 
 구체적으로 GraphQL로의 전환, 이미지 업로드 프로세스 개선, [알림 시스템 분리](https://github.com/Sevenfold777/wooriga-notification-serverless.git), Jest e2e test 진행 등 다방면에서의 업데이트가 진행되었습니다. 알림 시스템은 Node.js Serverless 환경에서 개발되었으면 [해당 Repository](https://github.com/Sevenfold777/wooriga-notification-serverless.git)에서 구체적인 내용을 확인하실 수 있습니다.
 
+우리가 서비스의 운영 과정 소개는 [링크](https://drive.google.com/file/d/12s9z8sV3VAMP1AbSgQ1zrNxBbQaFi-Z_/view?usp=sharing)에서 확인하실 수 있습니다.
+
 ## 목차
 
 - [아키텍처 개요](#아키텍처-개요)
