@@ -25,10 +25,13 @@ import { CreateResDTO } from 'src/common/dto/create-res.dto';
 import { CreatePhotoResDTO } from './dto/create-photo-res.dto';
 import { CreatePhotoReqDTO } from './dto/create-photo-req.dto';
 import { PhotoFileUploadCompletedReqDTO } from './dto/photo-file-upload-completed-req.dto';
+import { Inject } from '@nestjs/common';
 
 @Resolver(() => Photo)
 export class PhotoResolver {
-  constructor(private readonly photoService: PhotoService) {}
+  constructor(
+    @Inject(PhotoService) private readonly photoService: PhotoService,
+  ) {}
 
   @Mutation(() => CreatePhotoResDTO)
   createPhoto(

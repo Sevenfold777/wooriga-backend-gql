@@ -37,19 +37,16 @@ import { LetterGuide } from './letter/entities/letter-guide.entity';
 import { FamilyPedia } from './family-pedia/entities/family-pedia.entity';
 import { FamilyPediaQuestion } from './family-pedia/entities/family-pedia-question';
 import { DailyEmotionModule } from './daily-emotion/daily-emotion.module';
-import { SqsNotificationModule } from './sqs-notification/sqs-notification.module';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { SchedulerModule } from './scheduler/scheduler.module';
 import { DAU } from './admin/user/entities/dau.entity';
 import { MAU } from './admin/user/entities/mau.entity';
-import { RedisFamilyMemberModule } from './redis-family-member/redis-family-member.module';
-import { S3Module } from './s3/s3.module';
 import { FamilyPediaProfilePhoto } from './family-pedia/entities/family-pedia-profile-photo.entity';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ envFilePath: '.env.dev.local' }),
-    // ConfigModule.forRoot({ envFilePath: '.env.dev.remote' }),
+    // ConfigModule.forRoot({ envFilePath: '.env.dev.local' }),
+    ConfigModule.forRoot({ envFilePath: '.env.dev.remote' }),
     EventEmitterModule.forRoot({ ignoreErrors: false }),
     ScheduleModule.forRoot(),
     TypeOrmModule.forRoot({
@@ -105,10 +102,7 @@ import { FamilyPediaProfilePhoto } from './family-pedia/entities/family-pedia-pr
     PhotoModule,
     InquiryModule,
     DailyEmotionModule,
-    SqsNotificationModule,
     SchedulerModule,
-    RedisFamilyMemberModule,
-    S3Module,
   ],
   controllers: [AppController],
 })

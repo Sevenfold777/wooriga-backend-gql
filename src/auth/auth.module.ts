@@ -7,6 +7,7 @@ import { User } from 'src/user/entities/user.entity';
 import { JwtStrategy } from './jwt.strategy';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from './jwt-auth.guard';
+import { AuthServiceImpl } from './auth.service.impl';
 
 @Module({
   imports: [
@@ -17,7 +18,7 @@ import { JwtAuthGuard } from './jwt-auth.guard';
     }),
   ],
   providers: [
-    AuthService,
+    { provide: AuthService, useClass: AuthServiceImpl },
     JwtStrategy,
     { provide: APP_GUARD, useClass: JwtAuthGuard },
   ],

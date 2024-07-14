@@ -1,8 +1,15 @@
+import { SqsNotificationService } from 'src/sqs-notification/sqs-notification.service';
 import { Module } from '@nestjs/common';
-import { SqsNotificationService } from './sqs-notification.service';
+import { SqsNotificationServiceImpl } from './sqs-notification.service.impl';
 
 @Module({
-  providers: [SqsNotificationService],
-  exports: [SqsNotificationService],
+  providers: [
+    {
+      provide: SqsNotificationService,
+      useClass: SqsNotificationServiceImpl,
+    },
+    SqsNotificationServiceImpl,
+  ],
+  exports: [SqsNotificationService, SqsNotificationServiceImpl],
 })
 export class SqsNotificationModule {}

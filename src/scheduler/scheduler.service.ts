@@ -1,5 +1,5 @@
 import { SqsNotificationService } from './../sqs-notification/sqs-notification.service';
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DAU } from 'src/admin/user/entities/dau.entity';
@@ -30,23 +30,16 @@ export class SchedulerService {
   private logger = new Logger('Scheduler');
 
   constructor(
+    @Inject(SqsNotificationService)
     private readonly sqsNotificationService: SqsNotificationService,
-    private readonly s3Service: S3Service,
+    @Inject(S3Service) private readonly s3Service: S3Service,
     @InjectDataSource() private dataSource: DataSource,
     @InjectRepository(User) private userRepository: Repository<User>,
-    @InjectRepository(UserAuth)
-    private userAuthRepository: Repository<UserAuth>,
-    @InjectRepository(Family) private familyRepository: Repository<Family>,
-    @InjectRepository(Message) private messageRepository: Repository<Message>,
-    @InjectRepository(MessageFamily)
-    private messageFamRepository: Repository<MessageFamily>,
     @InjectRepository(Letter) private letterRepository: Repository<Letter>,
-    @InjectRepository(DAU) private dauRepository: Repository<DAU>,
-    @InjectRepository(MAU) private mauRepository: Repository<MAU>,
   ) {}
 
   @Cron('0 0 12 * * *', { timeZone: process.env.TZ })
-  async sendMessageToday(): Promise<void> {
+  private async sendMessageToday(): Promise<void> {
     const BATCH_ITEMS_COUNT = 500;
     const queryRunner = this.dataSource.createQueryRunner();
 
@@ -129,7 +122,7 @@ export class SchedulerService {
   }
 
   @Cron('0 0 8 * * *', { timeZone: process.env.TZ })
-  async sendBirthMessage(): Promise<void> {
+  private async sendBirthMessage(): Promise<void> {
     const BATCH_ITEMS_COUNT = 500;
     const queryRunner = this.dataSource.createQueryRunner();
 
@@ -218,7 +211,7 @@ export class SchedulerService {
   }
 
   @Cron('0 0 20 * * *', { timeZone: process.env.TZ })
-  async notifyBirth(): Promise<void> {
+  private async notifyBirth(): Promise<void> {
     const oneDay = 1000 * 60 * 60 * 24;
     const todaySolar = new Date(new Date().toLocaleDateString('ko-KR'));
 
@@ -305,7 +298,7 @@ export class SchedulerService {
   }
 
   @Cron('0 * * * * *')
-  async notifyTimeCapsuleOpened(): Promise<void> {
+  private async notifyTimeCapsuleOpened(): Promise<void> {
     const BATCH_ITEMS_COUNT = 250;
 
     const now = new Date();
@@ -354,7 +347,7 @@ export class SchedulerService {
   }
 
   @Cron('0 59 23 * * *', { timeZone: process.env.TZ })
-  async recordStat(): Promise<void> {
+  private async recordStat(): Promise<void> {
     const queryRunner = this.dataSource.createQueryRunner();
 
     await queryRunner.connect();
@@ -404,7 +397,7 @@ export class SchedulerService {
   }
 
   @Cron('0 0 2 * * *', { timeZone: process.env.TZ })
-  async removeEmptyFamily(): Promise<void> {
+  private async removeEmptyFamily(): Promise<void> {
     this.logger.log('scheduler invoked: [ removeEmptyFamily ]');
 
     const queryRunner = this.dataSource.createQueryRunner();

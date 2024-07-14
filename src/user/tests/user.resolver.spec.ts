@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { Test, TestingModule } from '@nestjs/testing';
 import { UserResolver } from '../user.resolver';
-import { UserService } from '../user.service';
+import { UserService } from '../user.service.impl';
 import { AuthUserId } from 'src/auth/constants/auth-user-id.type';
 import { EditUserReqDTO } from '../dto/edit-user-req.dto';
 import { RefreshTokenReqDTO } from '../dto/refresh-token-req.dto';

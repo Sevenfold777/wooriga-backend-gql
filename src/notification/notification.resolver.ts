@@ -6,10 +6,14 @@ import { AuthUserId } from 'src/auth/constants/auth-user-id.type';
 import { BaseResponseDTO } from 'src/common/dto/base-res.dto';
 import { PaginationReqDTO } from 'src/common/dto/pagination-req.dto';
 import { NotificationResDTO } from './dto/notification-res.dto';
+import { Inject } from '@nestjs/common';
 
 @Resolver(() => Notification)
 export class NotificationResolver {
-  constructor(private readonly notificationService: NotificationService) {}
+  constructor(
+    @Inject(NotificationService)
+    private readonly notificationService: NotificationService,
+  ) {}
 
   @Query(() => NotificationResDTO, {
     description: '나의 알림 목록 찾기 (페이지네이션)',

@@ -8,6 +8,7 @@ import { PhotoLike } from './entities/photo-like.entity';
 import { PhotoFile } from './entities/photo-file.entity';
 import { SqsNotificationModule } from 'src/sqs-notification/sqs-notification.module';
 import { S3Module } from 'src/s3/s3.module';
+import { PhotoServiceImpl } from './photo.service.impl';
 
 @Module({
   imports: [
@@ -15,6 +16,9 @@ import { S3Module } from 'src/s3/s3.module';
     SqsNotificationModule,
     S3Module,
   ],
-  providers: [PhotoResolver, PhotoService],
+  providers: [
+    PhotoResolver,
+    { provide: PhotoService, useClass: PhotoServiceImpl },
+  ],
 })
 export class PhotoModule {}

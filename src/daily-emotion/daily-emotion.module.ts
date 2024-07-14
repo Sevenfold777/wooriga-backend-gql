@@ -5,12 +5,16 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { DailyEmotion } from './entities/daily-emotion.entity';
 import { User } from 'src/user/entities/user.entity';
 import { SqsNotificationModule } from 'src/sqs-notification/sqs-notification.module';
+import { DailyEmotionServiceImpl } from './daily-emotion.service.impl';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([DailyEmotion, User]),
     SqsNotificationModule,
   ],
-  providers: [DailyEmotionResolver, DailyEmotionService],
+  providers: [
+    DailyEmotionResolver,
+    { provide: DailyEmotionService, useClass: DailyEmotionServiceImpl },
+  ],
 })
 export class DailyEmotionModule {}

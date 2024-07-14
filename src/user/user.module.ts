@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { UserService } from './user.service';
+import { UserServiceImpl } from './user.service.impl';
 import { UserResolver } from './user.resolver';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { User } from './entities/user.entity';
@@ -10,6 +10,7 @@ import { FamilyPediaModule } from 'src/family-pedia/family-pedia.module';
 import { MessageComment } from 'src/message/entities/message-comment.entity';
 import { PhotoComment } from 'src/photo/entities/photo-comment.entity';
 import { Photo } from 'src/photo/entities/photo.entity';
+import { UserService } from './user.service';
 
 @Module({
   imports: [
@@ -24,6 +25,9 @@ import { Photo } from 'src/photo/entities/photo.entity';
     FamilyModule,
     FamilyPediaModule,
   ],
-  providers: [UserResolver, UserService],
+  providers: [
+    UserResolver,
+    { provide: UserService, useClass: UserServiceImpl },
+  ],
 })
 export class UserModule {}

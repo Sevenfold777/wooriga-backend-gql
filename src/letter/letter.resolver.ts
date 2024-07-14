@@ -12,10 +12,13 @@ import { LetterResDTO } from './dto/letter-res.dto';
 import { LetterBoxResDTO } from './dto/letter-box-res.dto';
 import { LetterGuideResDTO } from './dto/letter-guide-res.dto';
 import { EditLetterKeptReqDTO } from './dto/edit-letter-kept-req.dto';
+import { Inject } from '@nestjs/common';
 
 @Resolver()
 export class LetterResolver {
-  constructor(private readonly letterService: LetterService) {}
+  constructor(
+    @Inject(LetterService) private readonly letterService: LetterService,
+  ) {}
 
   @Mutation(() => CreateResDTO)
   sendLetter(

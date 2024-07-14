@@ -13,10 +13,14 @@ import { CreateResDTO } from 'src/common/dto/create-res.dto';
 import { ProfilePhotoUploadCompletedReqDTO } from './dto/profile-photo-upload-completed-req.dto';
 import { ProfilePhotosResDTO } from './dto/profile-photos-res.dto';
 import { CreateProfilePhotoResDTO } from './dto/create-profile-photo-res.dto';
+import { Inject } from '@nestjs/common';
 
 @Resolver(() => FamilyPedia)
 export class FamilyPediaResolver {
-  constructor(private readonly familyPediaService: FamilyPediaService) {}
+  constructor(
+    @Inject(FamilyPediaService)
+    private readonly familyPediaService: FamilyPediaService,
+  ) {}
 
   @Mutation(() => CreateProfilePhotoResDTO)
   createPediaProfilePhoto(

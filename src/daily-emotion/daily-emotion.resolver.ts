@@ -9,10 +9,14 @@ import { DailyEmoByDateResDTO } from './dto/daily-emo-by-date-res.dto';
 import { DailyEmoResDTO } from './dto/daily-emo-res.dto';
 import { DailyEmosResDTO } from './dto/daily-emos-res.dto';
 import { PaginationByDateReqDTO } from './dto/pagination-by-date-req.dto';
+import { Inject } from '@nestjs/common';
 
 @Resolver(() => DailyEmotion)
 export class DailyEmotionResolver {
-  constructor(private readonly dailyEmotionService: DailyEmotionService) {}
+  constructor(
+    @Inject(DailyEmotionService)
+    private readonly dailyEmotionService: DailyEmotionService,
+  ) {}
 
   @Query(() => DailyEmoResDTO)
   findMyEmotionToday(@AuthUser() user: AuthUserId): Promise<DailyEmoResDTO> {

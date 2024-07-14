@@ -6,10 +6,13 @@ import { AuthUserId } from 'src/auth/constants/auth-user-id.type';
 import { InviteFamilyResDTO } from './dto/invite-family-res.dto';
 import { FamilyResDTO } from './dto/family-res.dto';
 import { JoinFamilyResDTO } from './dto/join-family-res.dto';
+import { Inject } from '@nestjs/common';
 
 @Resolver(() => Family)
 export class FamilyResolver {
-  constructor(private readonly familyService: FamilyService) {}
+  constructor(
+    @Inject(FamilyService) private readonly familyService: FamilyService,
+  ) {}
 
   @Query(() => FamilyResDTO)
   findMyFamily(

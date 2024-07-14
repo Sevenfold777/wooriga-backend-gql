@@ -6,12 +6,16 @@ import { Letter } from './entities/letter.entity';
 import { LetterGuide } from './entities/letter-guide.entity';
 import { User } from 'src/user/entities/user.entity';
 import { SqsNotificationModule } from 'src/sqs-notification/sqs-notification.module';
+import { LetterServiceImpl } from './letter.service.impl';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Letter, LetterGuide, User]),
     SqsNotificationModule,
   ],
-  providers: [LetterResolver, LetterService],
+  providers: [
+    LetterResolver,
+    { provide: LetterService, useClass: LetterServiceImpl },
+  ],
 })
 export class LetterModule {}

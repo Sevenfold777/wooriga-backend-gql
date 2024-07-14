@@ -12,10 +12,14 @@ import { SignUpReqDTO } from './dto/sign-up-req.dto';
 import { EditUserReqDTO } from './dto/edit-user-req.dto';
 import { UserResDTO } from './dto/user-res.dto';
 import { CreateResDTO } from 'src/common/dto/create-res.dto';
+import { Inject } from '@nestjs/common';
 
 @Resolver(() => User)
 export class UserResolver {
-  constructor(private readonly userService: UserService) {}
+  constructor(
+    @Inject(UserService)
+    private readonly userService: UserService,
+  ) {}
 
   @Query(() => UserResDTO)
   findMyProfile(@AuthUser() user: AuthUserId): Promise<UserResDTO> {

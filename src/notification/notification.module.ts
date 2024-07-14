@@ -5,12 +5,16 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Notification } from './entities/notification.entity';
 import { RedisFamilyMemberModule } from 'src/redis-family-member/redis-family-member.module';
 import { User } from 'src/user/entities/user.entity';
+import { NotificationServiceImpl } from './notification.service.impl';
 
 @Module({
   imports: [
     RedisFamilyMemberModule,
     TypeOrmModule.forFeature([Notification, User]),
   ],
-  providers: [NotificationResolver, NotificationService],
+  providers: [
+    NotificationResolver,
+    { provide: NotificationService, useClass: NotificationServiceImpl },
+  ],
 })
 export class NotificationModule {}

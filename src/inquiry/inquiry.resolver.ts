@@ -9,10 +9,13 @@ import { InquiriesResDTO } from './dto/inquiries-res.dto';
 import { InquiryResDTO } from './dto/inquiry-res.dto';
 import { PaginationReqDTO } from 'src/common/dto/pagination-req.dto';
 import { CreateResDTO } from 'src/common/dto/create-res.dto';
+import { Inject } from '@nestjs/common';
 
 @Resolver()
 export class InquiryResolver {
-  constructor(private readonly inquiryService: InquiryService) {}
+  constructor(
+    @Inject(InquiryService) private readonly inquiryService: InquiryService,
+  ) {}
 
   @Query(() => InquiriesResDTO)
   findInquiries(

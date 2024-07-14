@@ -8,6 +8,7 @@ import { MessageComment } from 'src/message/entities/message-comment.entity';
 import { MessageFamily } from 'src/message/entities/message-family.entity';
 import { MessageKeep } from 'src/message/entities/message-keep.entity';
 import { Message } from 'src/message/entities/message.entity';
+import { MessageServiceImpl } from './message.service.impl';
 
 @Module({
   imports: [
@@ -20,6 +21,9 @@ import { Message } from 'src/message/entities/message.entity';
       Family,
     ]),
   ],
-  providers: [MessageResolver, MessageService],
+  providers: [
+    MessageResolver,
+    { provide: MessageService, useClass: MessageServiceImpl },
+  ],
 })
 export class MessageModule {}

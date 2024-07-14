@@ -8,6 +8,7 @@ import { User } from 'src/user/entities/user.entity';
 import { SqsNotificationModule } from 'src/sqs-notification/sqs-notification.module';
 import { S3Module } from 'src/s3/s3.module';
 import { FamilyPediaProfilePhoto } from './entities/family-pedia-profile-photo.entity';
+import { FamilyPediaServiceImpl } from './family-pedia.service.impl';
 
 @Module({
   imports: [
@@ -20,7 +21,10 @@ import { FamilyPediaProfilePhoto } from './entities/family-pedia-profile-photo.e
     SqsNotificationModule,
     S3Module,
   ],
-  providers: [FamilyPediaResolver, FamilyPediaService],
+  providers: [
+    FamilyPediaResolver,
+    { provide: FamilyPediaService, useClass: FamilyPediaServiceImpl },
+  ],
   exports: [FamilyPediaService],
 })
 export class FamilyPediaModule {}

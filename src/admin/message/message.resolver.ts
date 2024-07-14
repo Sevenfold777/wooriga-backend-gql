@@ -8,10 +8,13 @@ import { EditMessageReqDTO } from '../dto/edit-message-req.dto';
 import { Message } from 'src/message/entities/message.entity';
 import { MessageListResDTO } from '../dto/message-list-res.dto';
 import { MessageDetailResDTO } from '../dto/message-detail-res.dto';
+import { Inject } from '@nestjs/common';
 
 @Resolver(() => Message)
 export class MessageResolver {
-  constructor(private readonly messageService: MessageService) {}
+  constructor(
+    @Inject(MessageService) private readonly messageService: MessageService,
+  ) {}
 
   @Query(() => MessageListResDTO)
   getMsgList(
@@ -28,22 +31,30 @@ export class MessageResolver {
   }
 
   @Mutation(() => BaseResponseDTO)
-  editMsg(@Args() editMessageReqDTO: EditMessageReqDTO) {
+  editMsg(
+    @Args() editMessageReqDTO: EditMessageReqDTO,
+  ): Promise<BaseResponseDTO> {
     return this.messageService.editMsg(editMessageReqDTO);
   }
 
   @Mutation(() => BaseResponseDTO)
-  deleteMsg(@Args('id', { type: () => Int }) id: number) {
+  deleteMsg(
+    @Args('id', { type: () => Int }) id: number,
+  ): Promise<BaseResponseDTO> {
     return this.messageService.deleteMsg(id);
   }
 
   @Mutation(() => BaseResponseDTO)
-  sendMsg(@Args('id', { type: () => Int }) id: number) {
+  sendMsg(
+    @Args('id', { type: () => Int }) id: number,
+  ): Promise<BaseResponseDTO> {
     return this.messageService.sendMsg(id);
   }
 
   @Mutation(() => BaseResponseDTO)
-  createMsg(@Args() createMessageReqDTO: CreateMessageReqDTO) {
+  createMsg(
+    @Args() createMessageReqDTO: CreateMessageReqDTO,
+  ): Promise<BaseResponseDTO> {
     return this.messageService.createMsg(createMessageReqDTO);
   }
 

@@ -21,7 +21,6 @@ export class LoggingInterceptor implements NestInterceptor {
     const request = gqlContext.req;
 
     const ip = request.ip;
-    // const userAgent = request.get('user-agent') || '';
     const query = request.body.query;
     const user = JSON.stringify(request.user);
 

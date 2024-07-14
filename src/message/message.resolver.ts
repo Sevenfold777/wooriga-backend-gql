@@ -12,10 +12,13 @@ import { PaginationReqDTO } from 'src/common/dto/pagination-req.dto';
 import { MsgCommentsResDTO } from './dto/message-comments-res.dto';
 import { MsgsResDTO } from './dto/messages-res.dto';
 import { CreateResDTO } from 'src/common/dto/create-res.dto';
+import { Inject } from '@nestjs/common';
 
 @Resolver(() => Message)
 export class MessageResolver {
-  constructor(private readonly messageService: MessageService) {}
+  constructor(
+    @Inject(MessageService) private readonly messageService: MessageService,
+  ) {}
 
   /**
    * message와 messageFamily의 혼동을 피하기 위해

@@ -6,10 +6,11 @@ import { CountResDTO } from '../dto/count-res.dto';
 import { DauListResDTO } from '../dto/dau-list-res.dto';
 import { MauListResDTO } from '../dto/mau-list-res.dto';
 import { UserDetailsResDTO } from '../dto/user-details-res.dto';
+import { Inject } from '@nestjs/common';
 
 @Resolver(() => User)
 export class UserResolver {
-  constructor(private readonly userService: UserService) {}
+  constructor(@Inject(UserService) private readonly userService: UserService) {}
 
   @Query(() => CountResDTO)
   getUsersCount(): Promise<CountResDTO> {
